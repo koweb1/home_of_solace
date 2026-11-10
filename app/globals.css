@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+:root {
+  /* Brand palette: Indigo and Clay */
+  --night: #0e1433;
+  --dusk: #1b2559;
+  --ivory: #f1e8d8;
+  --clay: #a65a41;
+  --ink: #12183a;
+  --marigold: #e9a23b; /* Reserve only. Never use this colour for anything else. */
+
+  /* Day-cycle variables: GSAP will animate these from dawn to night */
+  --sky-bg: #f3eadc;
+  --sky-fg: #12183a;
+}
+
+@theme inline {
+  --color-night: var(--night);
+  --color-dusk: var(--dusk);
+  --color-ivory: var(--ivory);
+  --color-clay: var(--clay);
+  --color-ink: var(--ink);
+  --color-marigold: var(--marigold);
+  --color-sky-bg: var(--sky-bg);
+  --color-sky-fg: var(--sky-fg);
+
+  --font-serif: var(--font-fraunces), Georgia, serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+}
+
+html {
+  background: var(--sky-bg);
+}
+
+body {
+  background: var(--sky-bg);
+  color: var(--sky-fg);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--clay);
+  color: var(--ivory);
+}
+
+:focus-visible {
+  outline: 2px solid var(--marigold);
+  outline-offset: 3px;
+}
+
+/* Fine film grain over the whole page */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  pointer-events: none;
+  opacity: 0.08;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

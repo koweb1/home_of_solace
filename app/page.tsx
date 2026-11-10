@@ -25,6 +25,9 @@ export default function Home() {
         </h1>
       </section>
 
+
+      
+
       {sections.map((s) => (
         <section
           key={s.id}

@@ -1,18 +1,20 @@
+import DayCycle from "@/components/layout/DayCycle";
+import Footer from "@/components/layout/Footer";
 import HeroBackground from "@/components/sections/HeroBackground";
-
-const sections = [
-  { id: "house", label: "The House" },
-  { id: "rooms", label: "Rooms" },
-  { id: "dining", label: "Dining" },
-  { id: "gallery", label: "Gallery" },
-  { id: "reserve", label: "Reserve" },
-];
+import House from "@/components/sections/House";
+import Rooms from "@/components/sections/Rooms";
+import Dining from "@/components/sections/Dining";
+import Gallery from "@/components/sections/Gallery";
+import Reserve from "@/components/sections/Reserve";
 
 export default function Home() {
   return (
     <main>
+      <DayCycle />
+
       <section
         id="top"
+        data-tone="dawn"
         className="relative flex min-h-screen flex-col items-center justify-center gap-6 overflow-hidden px-6 text-center"
       >
         <HeroBackground />
@@ -25,18 +27,17 @@ export default function Home() {
         </h1>
       </section>
 
+      <House />
 
-      
+      <Rooms />
 
-      {sections.map((s) => (
-        <section
-          key={s.id}
-          id={s.id}
-          className="flex min-h-screen items-center justify-center border-t border-sky-fg/10"
-        >
-          <p className="font-serif text-4xl">{s.label}</p>
-        </section>
-      ))}
+      <Dining />
+
+      <Gallery />
+
+      <Reserve />
+
+      <Footer />
     </main>
   );
 }

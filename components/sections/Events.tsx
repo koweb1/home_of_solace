@@ -29,7 +29,7 @@ const events: EventType[] = [
     unit: "guests",
     place: "on the lagoon lawn",
     text: "Aso-oke, live bands, and a kitchen that feeds everyone twice.",
-    image: "", // 📸 REAL IMAGE: "/images/events/wedding.jpg"
+    image: "/images/events/wedding.jpg",
     imagePath: "public/images/events/wedding.jpg",
     imageAlt: "A wedding on the lagoon lawn at House of Solace",
     offset: "md:mt-0",
@@ -41,7 +41,7 @@ const events: EventType[] = [
     unit: "delegates",
     place: "in the conference house",
     text: "Daylight rooms, fast Wi-Fi, and a pool for the afternoon slump.",
-    image: "", // 📸 REAL IMAGE: "/images/events/corporate.jpg"
+    image: "/images/events/corporate.jpg",
     imagePath: "public/images/events/corporate.jpg",
     imageAlt: "A corporate retreat at House of Solace",
     offset: "md:mt-24",
@@ -53,7 +53,7 @@ const events: EventType[] = [
     unit: "guests",
     place: "at the Long Table",
     text: "One long table, a menu built for your people, and no clock.",
-    image: "", // 📸 REAL IMAGE: "/images/events/private-dinner.jpg"
+    image: "/images/events/private-dinner.jpg",
     imagePath: "public/images/events/private-dinner.jpg",
     imageAlt: "A private dinner at the Long Table, House of Solace",
     offset: "md:mt-12",

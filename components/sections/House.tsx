@@ -5,10 +5,9 @@ import Image from "next/image";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import ReserveButton from "@/components/ui/ReserveButton";
 
-// 📸 REAL IMAGE: put your photo in public/images/house.jpg (portrait, 3:4,
-// for example 1500 x 2000), then set this to "/images/house.jpg".
-// While it is empty, a placeholder is shown in the arch.
-const HOUSE_IMAGE: string = "";
+// 📸 REAL IMAGE: public/images/house.jpg (portrait, 3:4, for example 1500 x 2000).
+// While this is empty, a placeholder is shown in the arch.
+const HOUSE_IMAGE: string = "/images/house.jpg";
 
 // Describe your photo here for screen readers and SEO.
 const HOUSE_IMAGE_ALT = "A quiet morning at House of Solace, Lagos";

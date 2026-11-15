@@ -16,7 +16,7 @@ type Room = {
   price: string;
   tone: "light" | "dusk" | "night";
   // 📸 REAL IMAGE: portrait 3:4 (for example 1500 x 2000).
-  // Put the photo in the path shown in the comment, then set it here.
+  // Put the photo in the path shown in imagePath, then set it in image.
   image: string;
   imagePath: string;
   imageAlt: string;
@@ -42,7 +42,7 @@ const rooms: Room[] = [
     ],
     price: "₦185,000",
     tone: "light",
-    image: "", // 📸 REAL IMAGE: "/images/rooms/garden-room.jpg"
+    image: "/images/rooms/garden-room.jpg",
     imagePath: "public/images/rooms/garden-room.jpg",
     imageAlt: "The Garden Room at House of Solace, Lagos",
   },
@@ -64,7 +64,7 @@ const rooms: Room[] = [
     ],
     price: "₦320,000",
     tone: "dusk",
-    image: "", // 📸 REAL IMAGE: "/images/rooms/lagoon-suite.jpg"
+    image: "/images/rooms/lagoon-suite.jpg",
     imagePath: "public/images/rooms/lagoon-suite.jpg",
     imageAlt: "The Lagoon Suite at House of Solace, Lagos",
   },
@@ -86,7 +86,7 @@ const rooms: Room[] = [
     ],
     price: "₦540,000",
     tone: "light",
-    image: "", // 📸 REAL IMAGE: "/images/rooms/courtyard-villa.jpg"
+    image: "/images/rooms/courtyard-villa.jpg",
     imagePath: "public/images/rooms/courtyard-villa.jpg",
     imageAlt: "The Courtyard Villa at House of Solace, Lagos",
   },
@@ -108,7 +108,7 @@ const rooms: Room[] = [
     ],
     price: "₦980,000",
     tone: "night",
-    image: "", // 📸 REAL IMAGE: "/images/rooms/solace-house.jpg"
+    image: "/images/rooms/solace-house.jpg",
     imagePath: "public/images/rooms/solace-house.jpg",
     imageAlt: "The Solace House at House of Solace, Lagos",
   },

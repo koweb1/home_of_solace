@@ -28,7 +28,7 @@ const shots: Shot[] = [
     ratio: "portrait",
     size: "lg",
     align: "self-center",
-    image: "", // 📸 REAL IMAGE (portrait 3:4): "/images/gallery/pool-dusk.jpg"
+    image: "/images/gallery/pool-dusk.jpg", // portrait 3:4
     imagePath: "public/images/gallery/pool-dusk.jpg",
     imageAlt: "The pool at House of Solace at dusk",
   },
@@ -38,7 +38,7 @@ const shots: Shot[] = [
     ratio: "landscape",
     size: "md",
     align: "self-end",
-    image: "", // 📸 REAL IMAGE (landscape 4:3): "/images/gallery/long-table-set.jpg"
+    image: "/images/gallery/long-table-set.jpg", // landscape 4:3
     imagePath: "public/images/gallery/long-table-set.jpg",
     imageAlt: "The Long Table set for dinner at House of Solace",
   },
@@ -48,7 +48,7 @@ const shots: Shot[] = [
     ratio: "tall",
     size: "lg",
     align: "self-start",
-    image: "", // 📸 REAL IMAGE (tall 2:3): "/images/gallery/lagoon-deck.jpg"
+    image: "/images/gallery/lagoon-deck.jpg", // tall 2:3
     imagePath: "public/images/gallery/lagoon-deck.jpg",
     imageAlt: "The lagoon deck at House of Solace",
   },
@@ -58,7 +58,7 @@ const shots: Shot[] = [
     ratio: "square",
     size: "sm",
     align: "self-center",
-    image: "", // 📸 REAL IMAGE (square 1:1): "/images/gallery/suite-detail.jpg"
+    image: "/images/gallery/suite-detail.jpg", // square 1:1
     imagePath: "public/images/gallery/suite-detail.jpg",
     imageAlt: "A suite detail at House of Solace, linen in warm light",
   },
@@ -68,7 +68,7 @@ const shots: Shot[] = [
     ratio: "portrait",
     size: "md",
     align: "self-end",
-    image: "", // 📸 REAL IMAGE (portrait 3:4): "/images/gallery/ember-deck-night.jpg"
+    image: "/images/gallery/ember-deck-night.jpg", // portrait 3:4
     imagePath: "public/images/gallery/ember-deck-night.jpg",
     imageAlt: "Ember Deck grill glowing after dark at House of Solace",
   },
@@ -78,7 +78,7 @@ const shots: Shot[] = [
     ratio: "landscape",
     size: "lg",
     align: "self-start",
-    image: "", // 📸 REAL IMAGE (landscape 4:3): "/images/gallery/spa.jpg"
+    image: "/images/gallery/spa.jpg", // landscape 4:3
     imagePath: "public/images/gallery/spa.jpg",
     imageAlt: "The spa at House of Solace in the quiet hour",
   },
@@ -88,7 +88,7 @@ const shots: Shot[] = [
     ratio: "portrait",
     size: "lg",
     align: "self-center",
-    image: "", // 📸 REAL IMAGE (portrait 3:4): "/images/gallery/courtyard-dusk.jpg"
+    image: "/images/gallery/courtyard-dusk.jpg", // portrait 3:4
     imagePath: "public/images/gallery/courtyard-dusk.jpg",
     imageAlt: "The courtyard at House of Solace at last light",
   },

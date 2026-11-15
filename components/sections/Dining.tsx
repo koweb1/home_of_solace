@@ -27,7 +27,7 @@ const venues: Venue[] = [
     kind: "Restaurant",
     hours: "Daily · 07:00 – 23:00",
     text: "A Nigerian-led kitchen. Smoky jollof, slow stews and fish done the way it should be, at one very long table.",
-    image: "", // 📸 REAL IMAGE: "/images/dining/long-table.jpg"
+    image: "/images/dining/long-table.jpg",
     imagePath: "public/images/dining/long-table.jpg",
     imageAlt: "The Long Table restaurant at House of Solace",
   },
@@ -36,7 +36,7 @@ const venues: Venue[] = [
     kind: "Lagoon grill",
     hours: "Daily · 17:00 – 00:00",
     text: "Suya, grilled fish and cold drinks at the water's edge, once the heat finally lets go.",
-    image: "", // 📸 REAL IMAGE: "/images/dining/ember-deck.jpg"
+    image: "/images/dining/ember-deck.jpg",
     imagePath: "public/images/dining/ember-deck.jpg",
     imageAlt: "Ember Deck grill by the lagoon at House of Solace",
   },
@@ -45,7 +45,7 @@ const venues: Venue[] = [
     kind: "Bar & lounge",
     hours: "Daily · 16:00 – 01:00",
     text: "Cocktails, palm wine, and a corner quiet enough to hear yourself think.",
-    image: "", // 📸 REAL IMAGE: "/images/dining/palm-bar.jpg"
+    image: "/images/dining/palm-bar.jpg",
     imagePath: "public/images/dining/palm-bar.jpg",
     imageAlt: "The Palm Bar at House of Solace",
   },

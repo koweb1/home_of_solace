@@ -27,8 +27,8 @@ const venues: Venue[] = [
     kind: "Restaurant",
     hours: "Daily · 07:00 – 23:00",
     text: "A Nigerian-led kitchen. Smoky jollof, slow stews and fish done the way it should be, at one very long table.",
-    image: "/images/dining/long-table.jpg",
-    imagePath: "public/images/dining/long-table.jpg",
+    image: "/images/dining/table.jpg",
+    imagePath: "public/images/dining/table.jpg",
     imageAlt: "The Long Table restaurant at House of Solace",
   },
   {

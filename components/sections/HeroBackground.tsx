@@ -17,10 +17,20 @@ export default function HeroBackground() {
       gsap.set(".bg-sun", { y: 110 });
       gsap.set(".bg-glow", { opacity: 0.35 });
 
+      let risen = false;
+      let fallback = 0;
+
       const rise = () => {
+        if (risen) return;
+        risen = true;
+        window.removeEventListener("solace:loaded", rise);
+        window.clearTimeout(fallback);
         gsap.to(".bg-sun", { y: 0, duration: 3.2, ease: "expo.out" });
         gsap.to(".bg-glow", { opacity: 1, duration: 3.2, ease: "power2.out" });
       };
+
+      // Safety net: even if the loader's signal is missed, the sun still rises
+      fallback = window.setTimeout(rise, 6500);
 
       if (document.documentElement.dataset.loaded === "true") {
         rise();
@@ -40,7 +50,10 @@ export default function HeroBackground() {
         },
       });
 
-      return () => window.removeEventListener("solace:loaded", rise);
+      return () => {
+        window.removeEventListener("solace:loaded", rise);
+        window.clearTimeout(fallback);
+      };
     },
     { scope: root }
   );

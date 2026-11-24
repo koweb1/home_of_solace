@@ -27,15 +27,15 @@ const venues: Venue[] = [
     kind: "Restaurant",
     hours: "Daily · 07:00 – 23:00",
     text: "A Nigerian-led kitchen. Smoky jollof, slow stews and fish done the way it should be, at one very long table.",
-    image: "/images/dining/table.jpg",
-    imagePath: "public/images/dining/table.jpg",
+    image: "/images/dining/long-table.jpg",
+    imagePath: "public/images/dining/long-table.jpg",
     imageAlt: "The Long Table restaurant at House of Solace",
   },
   {
     name: "Ember Deck",
     kind: "Lagoon grill",
     hours: "Daily · 17:00 – 00:00",
-    text: "Suya, grilled fish and cold drinks at the water's edge, once the heat finally lets go.",
+    text: "Suya, grilled fish and cold drinks at the water’s edge, once the heat finally lets go.",
     image: "/images/dining/ember-deck.jpg",
     imagePath: "public/images/dining/ember-deck.jpg",
     imageAlt: "Ember Deck grill by the lagoon at House of Solace",
@@ -62,16 +62,18 @@ type Mover = ReturnType<typeof gsap.quickTo>;
 function VenueImage({
   venue,
   decorative = false,
+  sizes = "(min-width: 768px) 16rem, 80vw",
 }: {
   venue: Venue;
   decorative?: boolean;
+  sizes?: string;
 }) {
   return venue.image ? (
     <Image
       src={venue.image}
       alt={decorative ? "" : venue.imageAlt}
       fill
-      sizes="(min-width: 768px) 16rem, 14rem"
+      sizes={sizes}
       className="object-cover"
     />
   ) : (
@@ -89,10 +91,9 @@ export default function Dining() {
 
   const { contextSafe } = useGSAP(
     () => {
-      const prefersReduced = window.matchMedia(
+      reduced.current = window.matchMedia(
         "(prefers-reduced-motion: reduce)"
       ).matches;
-      reduced.current = prefersReduced;
 
       // Cursor arch (mouse only)
       const canHover = window.matchMedia(
@@ -114,74 +115,147 @@ export default function Dining() {
         });
       }
 
-      if (prefersReduced) return;
+      const mm = gsap.matchMedia();
 
-      // The sun sets while the chapter scrolls by
-      gsap.fromTo(
-        ".dining-sun",
-        { yPercent: -10, opacity: 1 },
+      mm.add(
         {
-          yPercent: 90,
-          opacity: 0.1,
-          ease: "none",
-          scrollTrigger: {
-            trigger: root.current,
-            start: "top 70%",
-            end: "bottom 30%",
-            scrub: true,
-          },
+          reduce: "(prefers-reduced-motion: reduce)",
+          phone: "(max-width: 767px)",
+        },
+        (context) => {
+          const { reduce, phone } = context.conditions as {
+            reduce: boolean;
+            phone: boolean;
+          };
+          reduced.current = reduce;
+
+          // Reduced motion: gentle fades only, nothing moves
+          if (reduce) {
+            gsap
+              .utils.toArray<HTMLElement>(
+                ".dining-head, .dining-row, .dining-cta"
+              )
+              .forEach((el) => {
+                gsap.fromTo(
+                  el,
+                  { opacity: 0 },
+                  {
+                    opacity: 1,
+                    duration: 0.9,
+                    ease: "power1.out",
+                    scrollTrigger: { trigger: el, start: "top 92%", once: true },
+                  }
+                );
+              });
+            return;
+          }
+
+          const rise = phone ? 32 : 24;
+          const headLines = phone ? ".dining-head-line-m" : ".dining-head-line-d";
+
+          // The sun sets while the chapter scrolls by
+          gsap.fromTo(
+            ".dining-sun",
+            { yPercent: -10, opacity: 1 },
+            {
+              yPercent: 90,
+              opacity: 0.1,
+              ease: "none",
+              scrollTrigger: {
+                trigger: root.current,
+                start: "top 70%",
+                end: "bottom 30%",
+                scrub: true,
+              },
+            }
+          );
+
+          // Heading
+          gsap.set(headLines, { yPercent: 115 });
+          gsap.set(".dining-head-fade", { opacity: 0, y: rise });
+
+          gsap
+            .timeline({
+              defaults: { ease: "expo.out" },
+              scrollTrigger: {
+                trigger: ".dining-head",
+                start: phone ? "top 90%" : "top 82%",
+                once: true,
+              },
+            })
+            .to(headLines, { yPercent: 0, duration: 1.4, stagger: 0.12 }, 0)
+            .to(
+              ".dining-head-fade",
+              { opacity: 1, y: 0, duration: 1.1, stagger: 0.12 },
+              0.3
+            );
+
+          // Venue rows
+          gsap.utils.toArray<HTMLElement>(".dining-row").forEach((row) => {
+            const q = gsap.utils.selector(row);
+
+            gsap.set(q(".dining-line"), { yPercent: 115 });
+            gsap.set(q(".dining-fade"), { opacity: 0, y: rise });
+
+            gsap
+              .timeline({
+                defaults: { ease: "expo.out" },
+                scrollTrigger: {
+                  trigger: row,
+                  start: phone ? "top 92%" : "top 88%",
+                  once: true,
+                },
+              })
+              .to(q(".dining-line"), { yPercent: 0, duration: 1.4 }, 0)
+              .to(
+                q(".dining-fade"),
+                { opacity: 1, y: 0, duration: 1.1, stagger: 0.1 },
+                0.3
+              );
+
+            // Phone: the photo opens upward when it reaches the screen
+            const photo = row.querySelector<HTMLElement>(".dining-photo");
+            if (phone && photo) {
+              const inner = q(".dining-photo-scale");
+
+              gsap.set(photo, { clipPath: "inset(100% 0% 0% 0%)" });
+              gsap.set(inner, { scale: 1.3 });
+
+              gsap
+                .timeline({
+                  defaults: { ease: "expo.out" },
+                  scrollTrigger: { trigger: photo, start: "top 90%", once: true },
+                })
+                .to(
+                  photo,
+                  {
+                    clipPath: "inset(0% 0% 0% 0%)",
+                    duration: 1.8,
+                    ease: "expo.inOut",
+                  },
+                  0
+                )
+                .to(inner, { scale: 1, duration: 2.2 }, 0);
+            }
+          });
+
+          // Closing line and button
+          gsap.set(".dining-cta", { opacity: 0, y: rise });
+          gsap.to(".dining-cta", {
+            opacity: 1,
+            y: 0,
+            duration: 1.1,
+            ease: "expo.out",
+            scrollTrigger: {
+              trigger: ".dining-cta",
+              start: phone ? "top 96%" : "top 92%",
+              once: true,
+            },
+          });
         }
       );
 
-      // Heading
-      gsap.set(".dining-head-line", { yPercent: 115 });
-      gsap.set(".dining-head-fade", { opacity: 0, y: 24 });
-
-      gsap
-        .timeline({
-          defaults: { ease: "expo.out" },
-          scrollTrigger: {
-            trigger: ".dining-head",
-            start: "top 82%",
-            once: true,
-          },
-        })
-        .to(".dining-head-line", { yPercent: 0, duration: 1.4, stagger: 0.12 }, 0)
-        .to(
-          ".dining-head-fade",
-          { opacity: 1, y: 0, duration: 1.1, stagger: 0.12 },
-          0.3
-        );
-
-      // Venue rows
-      gsap.utils.toArray<HTMLElement>(".dining-row").forEach((row) => {
-        const q = gsap.utils.selector(row);
-
-        gsap.set(q(".dining-line"), { yPercent: 115 });
-        gsap.set(q(".dining-fade"), { opacity: 0, y: 24 });
-
-        gsap
-          .timeline({
-            defaults: { ease: "expo.out" },
-            scrollTrigger: { trigger: row, start: "top 88%", once: true },
-          })
-          .to(q(".dining-line"), { yPercent: 0, duration: 1.4 }, 0)
-          .to(
-            q(".dining-fade"),
-            { opacity: 1, y: 0, duration: 1.1, stagger: 0.1 },
-            0.3
-          );
-      });
-
-      // Closing line and button
-      gsap.set(".dining-cta", { opacity: 0, y: 24 });
-      gsap.to(".dining-cta", {
-        opacity: 1,
-        y: 0,
-        duration: 1.1,
-        ease: "expo.out",
-        scrollTrigger: { trigger: ".dining-cta", start: "top 92%", once: true },
-      });
+      return () => mm.revert();
     },
     { scope: root }
   );
@@ -222,13 +296,14 @@ export default function Dining() {
       ref={root}
       className="relative px-5 py-28 md:px-10 md:py-44"
     >
-      {/* The setting sun, pinned behind the whole chapter */}
+      {/* The setting sun, pinned behind the whole chapter.
+          Phone: smaller and fainter, so it never fights the text */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 z-0"
       >
         <div className="sticky top-0 h-screen overflow-hidden">
-          <div className="dining-sun absolute right-[-14vw] top-[16vh] aspect-square w-[min(70vw,40rem)] rounded-full bg-clay/50 md:right-[-8vw] md:w-[min(52vw,40rem)]" />
+          <div className="dining-sun absolute right-[-18vw] top-[12vh] aspect-square w-[min(56vw,22rem)] rounded-full bg-clay/25 md:right-[-8vw] md:top-[16vh] md:w-[min(52vw,40rem)] md:bg-clay/50" />
         </div>
       </div>
 
@@ -262,17 +337,36 @@ export default function Dining() {
             </p>
 
             <h2
+              aria-label="When the light goes gold, we eat."
               className="mt-8 font-serif text-[clamp(2.6rem,6.2vw,5.4rem)] leading-[1] tracking-[-0.02em]"
               style={{ fontVariationSettings: '"SOFT" 70' }}
             >
-              <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
-                <span className="dining-head-line block">
-                  When the light goes
+              {/* Phone: three short lines, so no word is left on its own */}
+              <span aria-hidden="true" className="block md:hidden">
+                <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+                  <span className="dining-head-line-m block">When the light</span>
+                </span>
+                <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+                  <span className="dining-head-line-m block">
+                    goes <em className={accent}>gold</em>,
+                  </span>
+                </span>
+                <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+                  <span className="dining-head-line-m block">we eat.</span>
                 </span>
               </span>
-              <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
-                <span className="dining-head-line block">
-                  <em className={accent}>gold</em>, we eat.
+
+              {/* Tablet and laptop: two lines */}
+              <span aria-hidden="true" className="hidden md:block">
+                <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+                  <span className="dining-head-line-d block">
+                    When the light goes
+                  </span>
+                </span>
+                <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+                  <span className="dining-head-line-d block">
+                    <em className={accent}>gold</em>, we eat.
+                  </span>
                 </span>
               </span>
             </h2>
@@ -337,9 +431,11 @@ export default function Dining() {
                   </a>
                 </div>
 
-                {/* Touch screens: the photo sits right under the row */}
-                <div className="dining-fade relative aspect-[3/4] w-52 overflow-hidden rounded-t-full md:hidden">
-                  <VenueImage venue={venue} />
+                {/* Phone: the photo sits under the row, centred */}
+                <div className="dining-photo relative mx-auto aspect-[3/4] w-[min(78vw,20rem)] overflow-hidden rounded-t-full md:hidden">
+                  <div className="dining-photo-scale absolute inset-0">
+                    <VenueImage venue={venue} />
+                  </div>
                 </div>
               </div>
             </li>

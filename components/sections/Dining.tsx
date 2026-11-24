@@ -197,6 +197,19 @@ export default function Dining() {
             gsap.set(q(".dining-line"), { yPercent: 115 });
             gsap.set(q(".dining-fade"), { opacity: 0, y: rise });
 
+            // Phone: the details (kind, hours, reserve link) sit under the
+            // photo, so they appear when they reach the screen
+            const details = row.querySelector<HTMLElement>(".dining-details");
+            const fades = q(".dining-fade");
+            const lead =
+              phone && details
+                ? fades.filter((el) => !details.contains(el))
+                : fades;
+            const trail =
+              phone && details
+                ? fades.filter((el) => details.contains(el))
+                : [];
+
             gsap
               .timeline({
                 defaults: { ease: "expo.out" },
@@ -207,11 +220,22 @@ export default function Dining() {
                 },
               })
               .to(q(".dining-line"), { yPercent: 0, duration: 1.4 }, 0)
-              .to(
-                q(".dining-fade"),
-                { opacity: 1, y: 0, duration: 1.1, stagger: 0.1 },
-                0.3
-              );
+              .to(lead, { opacity: 1, y: 0, duration: 1.1, stagger: 0.1 }, 0.3);
+
+            if (trail.length && details) {
+              gsap.to(trail, {
+                opacity: 1,
+                y: 0,
+                duration: 1.1,
+                stagger: 0.1,
+                ease: "expo.out",
+                scrollTrigger: {
+                  trigger: details,
+                  start: "top 94%",
+                  once: true,
+                },
+              });
+            }
 
             // Phone: the photo opens upward when it reaches the screen
             const photo = row.querySelector<HTMLElement>(".dining-photo");
@@ -413,7 +437,15 @@ export default function Dining() {
                   </p>
                 </div>
 
-                <div className="flex flex-col gap-3 md:col-span-4 md:items-end md:text-right">
+                {/* Phone: the photo comes right after the paragraph, centred */}
+                <div className="dining-photo relative order-1 mx-auto aspect-[3/4] w-[min(78vw,20rem)] overflow-hidden rounded-t-full md:hidden">
+                  <div className="dining-photo-scale absolute inset-0">
+                    <VenueImage venue={venue} />
+                  </div>
+                </div>
+
+                {/* Phone: kind, hours and reserve link sit under the photo */}
+                <div className="dining-details order-2 flex flex-col gap-3 md:order-none md:col-span-4 md:items-end md:text-right">
                   <p className="dining-fade text-[0.65rem] uppercase tracking-[0.3em] opacity-60">
                     {venue.kind}
                   </p>
@@ -429,13 +461,6 @@ export default function Dining() {
                     Reserve a table
                     <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-100 bg-current transition-transform duration-500 ease-out group-hover:scale-x-0" />
                   </a>
-                </div>
-
-                {/* Phone: the photo sits under the row, centred */}
-                <div className="dining-photo relative mx-auto aspect-[3/4] w-[min(78vw,20rem)] overflow-hidden rounded-t-full md:hidden">
-                  <div className="dining-photo-scale absolute inset-0">
-                    <VenueImage venue={venue} />
-                  </div>
                 </div>
               </div>
             </li>

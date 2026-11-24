@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import Image from "next/image";
-import { gsap, useGSAP } from "@/lib/gsap";
+import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import ImagePlaceholder from "@/components/ui/ImagePlaceholder";
 import ReserveButton from "@/components/ui/ReserveButton";
 
@@ -139,90 +139,202 @@ export default function Rooms() {
 
   useGSAP(
     () => {
-      const reduced = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches;
-      if (reduced) return;
-
-      // Section heading
-      gsap.set(".rooms-line", { yPercent: 115 });
-      gsap.set(".rooms-fade", { opacity: 0, y: 24 });
-
-      gsap
-        .timeline({
-          defaults: { ease: "expo.out" },
-          scrollTrigger: {
-            trigger: ".rooms-head",
-            start: "top 82%",
-            once: true,
-          },
-        })
-        .to(".rooms-line", { yPercent: 0, duration: 1.4, stagger: 0.12 }, 0)
-        .to(
-          ".rooms-fade",
-          { opacity: 1, y: 0, duration: 1.1, stagger: 0.12 },
-          0.3
-        );
-
-      // Each room's entrance
       const items = gsap.utils.toArray<HTMLElement>(".room");
-
-      items.forEach((room) => {
-        const q = gsap.utils.selector(room);
-
-        gsap.set(q(".room-arch"), { clipPath: "inset(100% 0% 0% 0%)" });
-        gsap.set(q(".room-scale"), { scale: 1.3 });
-        gsap.set(q(".room-line"), { yPercent: 115 });
-        gsap.set(q(".room-fade"), { opacity: 0, y: 26 });
-
-        gsap
-          .timeline({
-            defaults: { ease: "expo.out" },
-            scrollTrigger: { trigger: room, start: "top 78%", once: true },
-          })
-          .to(
-            q(".room-arch"),
-            {
-              clipPath: "inset(0% 0% 0% 0%)",
-              duration: 1.9,
-              ease: "expo.inOut",
-            },
-            0
-          )
-          .to(q(".room-scale"), { scale: 1, duration: 2.4 }, 0)
-          .to(q(".room-line"), { yPercent: 0, duration: 1.4 }, 0.35)
-          .to(
-            q(".room-fade"),
-            { opacity: 1, y: 0, duration: 1.1, stagger: 0.09 },
-            0.55
-          );
-      });
-
-      // Desktop only: each panel sinks back as the next one covers it
       const mm = gsap.matchMedia();
 
-      mm.add("(min-width: 768px)", () => {
-        items.forEach((room, i) => {
-          const next = items[i + 1];
-          if (!next) return;
+      mm.add(
+        {
+          reduce: "(prefers-reduced-motion: reduce)",
+          phone: "(max-width: 767px)",
+        },
+        (context) => {
+          const { reduce, phone } = context.conditions as {
+            reduce: boolean;
+            phone: boolean;
+          };
+
+          // Reduced motion: gentle fades only, nothing moves
+          if (reduce) {
+            gsap
+              .utils.toArray<HTMLElement>(".rooms-head, .room")
+              .forEach((el) => {
+                gsap.fromTo(
+                  el,
+                  { opacity: 0 },
+                  {
+                    opacity: 1,
+                    duration: 0.9,
+                    ease: "power1.out",
+                    scrollTrigger: { trigger: el, start: "top 92%", once: true },
+                  }
+                );
+              });
+            return;
+          }
+
+          const rise = phone ? 36 : 26;
+
+          // Section heading
+          gsap.set(".rooms-line", { yPercent: 115 });
+          gsap.set(".rooms-fade", { opacity: 0, y: 24 });
 
           gsap
             .timeline({
+              defaults: { ease: "expo.out" },
               scrollTrigger: {
-                trigger: next,
-                start: "top 90%",
-                end: "top 16%",
-                scrub: true,
+                trigger: ".rooms-head",
+                start: phone ? "top 90%" : "top 82%",
+                once: true,
               },
             })
-            .to(room.querySelector(".room-card"), { scale: 0.94, ease: "none" }, 0)
+            .to(".rooms-line", { yPercent: 0, duration: 1.4, stagger: 0.12 }, 0)
             .to(
-              room.querySelector(".room-shade"),
-              { opacity: 0.55, ease: "none" },
-              0
+              ".rooms-fade",
+              { opacity: 1, y: 0, duration: 1.1, stagger: 0.12 },
+              0.3
             );
-        });
-      });
+
+          // Each room's entrance
+          items.forEach((room) => {
+            const q = gsap.utils.selector(room);
+
+            gsap.set(q(".room-arch"), { clipPath: "inset(100% 0% 0% 0%)" });
+            gsap.set(q(".room-scale"), { scale: 1.3 });
+            gsap.set(q(".room-line"), { yPercent: 115 });
+            gsap.set(q(".room-fade"), { opacity: 0, y: rise });
+
+            if (!phone) {
+              // Laptop and tablet: the whole panel enters together
+              gsap
+                .timeline({
+                  defaults: { ease: "expo.out" },
+                  scrollTrigger: { trigger: room, start: "top 78%", once: true },
+                })
+                .to(
+                  q(".room-arch"),
+                  {
+                    clipPath: "inset(0% 0% 0% 0%)",
+                    duration: 1.9,
+                    ease: "expo.inOut",
+                  },
+                  0
+                )
+                .to(q(".room-scale"), { scale: 1, duration: 2.4 }, 0)
+                .to(q(".room-line"), { yPercent: 0, duration: 1.4 }, 0.35)
+                .to(
+                  q(".room-fade"),
+                  { opacity: 1, y: 0, duration: 1.1, stagger: 0.09 },
+                  0.55
+                );
+              return;
+            }
+
+            // Phone: each part reveals when it reaches the screen
+            const top = room.querySelector<HTMLElement>(".room-top");
+            const media = room.querySelector<HTMLElement>(".room-arch-wrap");
+            const bottom = room.querySelector<HTMLElement>(".room-bottom");
+            if (!top || !media || !bottom) return;
+
+            const inTop = gsap.utils.selector(top);
+            const inBottom = gsap.utils.selector(bottom);
+
+            gsap
+              .timeline({
+                defaults: { ease: "expo.out" },
+                scrollTrigger: { trigger: top, start: "top 90%", once: true },
+              })
+              .to(inTop(".room-line"), { yPercent: 0, duration: 1.4 }, 0)
+              .to(
+                inTop(".room-fade"),
+                { opacity: 1, y: 0, duration: 1.1, stagger: 0.09 },
+                0.2
+              );
+
+            gsap
+              .timeline({
+                defaults: { ease: "expo.out" },
+                scrollTrigger: { trigger: media, start: "top 88%", once: true },
+              })
+              .to(
+                q(".room-arch"),
+                {
+                  clipPath: "inset(0% 0% 0% 0%)",
+                  duration: 1.9,
+                  ease: "expo.inOut",
+                },
+                0
+              )
+              .to(q(".room-scale"), { scale: 1, duration: 2.4 }, 0);
+
+            gsap.to(inBottom(".room-fade"), {
+              opacity: 1,
+              y: 0,
+              duration: 1.1,
+              stagger: 0.09,
+              ease: "expo.out",
+              scrollTrigger: { trigger: bottom, start: "top 92%", once: true },
+            });
+          });
+
+          // Phone: pin each card by its BOTTOM, so a card taller than the
+          // screen can still be read in full before the next one covers it
+          let cleanupPins: (() => void) | undefined;
+
+          if (phone) {
+            const saved = items.map((li) => ({
+              position: li.style.position,
+              top: li.style.top,
+            }));
+
+            const setTops = () => {
+              const vh = window.innerHeight;
+              items.forEach((li, i) => {
+                const wanted = 88 + i * 12;
+                const fits = vh - li.offsetHeight - 16;
+                li.style.position = "sticky";
+                li.style.top = `${Math.min(wanted, fits)}px`;
+              });
+            };
+
+            setTops();
+            ScrollTrigger.addEventListener("refreshInit", setTops);
+
+            cleanupPins = () => {
+              ScrollTrigger.removeEventListener("refreshInit", setTops);
+              items.forEach((li, i) => {
+                li.style.position = saved[i].position;
+                li.style.top = saved[i].top;
+              });
+            };
+          }
+
+          // Each panel sinks back as the next one covers it
+          items.forEach((room, i) => {
+            const next = items[i + 1];
+            if (!next) return;
+
+            const card = room.querySelector<HTMLElement>(".room-card");
+            const shade = room.querySelector<HTMLElement>(".room-shade");
+            if (!card || !shade) return;
+
+            gsap.set(card, { transformOrigin: phone ? "50% 100%" : "50% 0%" });
+
+            gsap
+              .timeline({
+                scrollTrigger: {
+                  trigger: next,
+                  start: phone ? "top bottom" : "top 90%",
+                  end: phone ? "top 30%" : "top 16%",
+                  scrub: true,
+                },
+              })
+              .to(card, { scale: 0.94, ease: "none" }, 0)
+              .to(shade, { opacity: 0.55, ease: "none" }, 0);
+          });
+
+          return cleanupPins;
+        }
+      );
 
       return () => mm.revert();
     },
@@ -272,16 +384,17 @@ export default function Rooms() {
           {rooms.map((room, i) => (
             <li
               key={room.name}
-              className="room md:sticky md:mb-[22vh] md:h-[calc(100svh-9.5rem)] md:min-h-[32rem] md:last:mb-0"
+              className="room md:sticky md:mb-[22vh] md:h-[min(calc(100svh-9.5rem),50rem)] md:min-h-[32rem] md:last:mb-0 lg:h-[calc(100svh-9.5rem)]"
               style={{ top: `calc(5.5rem + ${i * 0.9}rem)` }}
             >
               <article
-                className={`room-card group relative flex h-full origin-top flex-col gap-8 overflow-hidden rounded-[1.75rem] p-5 shadow-[0_40px_90px_-50px_rgba(14,20,51,0.55)] md:gap-12 md:p-8 lg:p-10 ${
+                className={`room-card group relative flex h-full origin-top flex-col gap-7 overflow-hidden rounded-[1.75rem] p-5 shadow-[0_40px_90px_-50px_rgba(14,20,51,0.55)] md:gap-8 md:p-8 lg:gap-12 lg:p-10 ${
                   i % 2 === 1 ? "md:flex-row-reverse" : "md:flex-row"
                 } ${toneClass[room.tone]}`}
               >
-                {/* Arch */}
-                <div className="relative mx-auto aspect-[3/4] w-full max-w-[22rem] shrink-0 md:mx-0 md:h-full md:w-auto md:max-w-none">
+                {/* Photo. Phone: between the description and the details.
+                    Tablet: 44% of the card. Laptop: full height of the card */}
+                <div className="room-arch-wrap relative order-2 mx-auto aspect-[3/4] w-full max-w-[22rem] shrink-0 md:order-1 md:mx-0 md:w-[44%] md:max-w-none md:self-center lg:h-full lg:w-auto lg:self-auto">
                   <div className="room-arch absolute inset-0 overflow-hidden rounded-t-full">
                     <div className="room-scale h-full w-full">
                       <div className="h-full w-full transition-transform duration-[1400ms] ease-out group-hover:scale-[1.04]">
@@ -290,7 +403,7 @@ export default function Rooms() {
                             src={room.image}
                             alt={room.imageAlt}
                             fill
-                            sizes="(min-width: 768px) 30vw, 90vw"
+                            sizes="(min-width: 1024px) 30vw, (min-width: 768px) 40vw, 90vw"
                             className="object-cover"
                           />
                         ) : (
@@ -301,9 +414,11 @@ export default function Rooms() {
                   </div>
                 </div>
 
-                {/* Details */}
-                <div className="flex flex-1 flex-col justify-between gap-8">
-                  <div>
+                {/* Details. On a phone this wrapper disappears, so the
+                    top and bottom parts can sit either side of the photo */}
+                <div className="contents md:order-2 md:flex md:flex-1 md:flex-col md:justify-between md:gap-8">
+                  {/* Top: number, type, name, description */}
+                  <div className="room-top order-1 md:order-none">
                     <p className="room-fade flex items-center justify-between text-[0.65rem] uppercase tracking-[0.3em] opacity-60">
                       <span>
                         {room.number} / 0{rooms.length}
@@ -325,9 +440,10 @@ export default function Rooms() {
                     </p>
                   </div>
 
-                  <div className="flex flex-col gap-6">
+                  {/* Bottom: sizes, features, price, reserve */}
+                  <div className="room-bottom order-3 flex flex-col gap-6 md:order-none">
                     <dl
-                      className="room-fade grid grid-cols-2 gap-x-6 gap-y-5 border-t pt-6 md:grid-cols-4"
+                      className="room-fade grid grid-cols-2 gap-x-6 gap-y-5 border-t pt-6 lg:grid-cols-4"
                       style={hairline}
                     >
                       {room.specs.map(([label, value]) => (

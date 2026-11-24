@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { gsap, useGSAP } from "@/lib/gsap";
+import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import LogoMark from "@/components/layout/Logo";
 
 export default function Loader() {
@@ -16,6 +16,14 @@ export default function Loader() {
     return () => {
       document.body.style.overflow = previous;
     };
+  }, [done]);
+
+  // The scroll lock hides the scrollbar, so the page was measured a few
+  // pixels too wide. Measure again once the lock has been released.
+  useEffect(() => {
+    if (!done) return;
+    const id = requestAnimationFrame(() => ScrollTrigger.refresh());
+    return () => cancelAnimationFrame(id);
   }, [done]);
 
   useGSAP(

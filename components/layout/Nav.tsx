@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
 import NavLogo from "@/components/layout/NavLogo";
 import ReserveButton from "@/components/ui/ReserveButton";
+import { site } from "@/lib/site";
 import { scrollToSection } from "@/utils/scrollToSection";
 
 const links = [
@@ -63,7 +64,7 @@ export default function Nav() {
     { scope: root }
   );
 
-  // 3. Mobile menu timeline (built once, played and reversed)
+  // 3. Full-screen menu timeline (built once, played and reversed)
   useGSAP(
     () => {
       const el = menu.current;
@@ -109,7 +110,8 @@ export default function Nav() {
     else tl.reverse();
   }, [open]);
 
-  // While the menu is open: lock scroll, allow Escape, close on desktop width
+  // While the menu is open: lock scroll, allow Escape, close when the
+  // desktop links take over (1024px and up)
   useEffect(() => {
     if (!open) return;
 
@@ -119,7 +121,7 @@ export default function Nav() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    const mq = window.matchMedia("(min-width: 768px)");
+    const mq = window.matchMedia("(min-width: 1024px)");
     const onChange = () => {
       if (mq.matches) setOpen(false);
     };
@@ -162,13 +164,14 @@ export default function Nav() {
 
         <nav
           aria-label="Main"
-          className={`mx-auto flex max-w-[90rem] items-center justify-between px-5 transition-[padding] duration-700 md:px-10 ${
-            scrolled ? "py-3" : "py-5 md:py-7"
+          className={`mx-auto flex max-w-[90rem] items-center justify-between gap-3 px-4 transition-[padding] duration-700 sm:px-5 md:px-10 ${
+            scrolled ? "py-3" : "py-4 md:py-7"
           }`}
         >
           <a
             href="#top"
             aria-label="House of Solace, back to top"
+            className="shrink-0"
             onClick={(e) => {
               e.preventDefault();
               scrollToSection(0);
@@ -178,13 +181,14 @@ export default function Nav() {
             <NavLogo />
           </a>
 
-          <ul className="hidden items-center gap-10 md:flex">
+          {/* Desktop links, from 1024px up */}
+          <ul className="hidden items-center gap-8 lg:flex xl:gap-10">
             {links.map((link) => (
               <li key={link.href}>
                 <a
                   href={link.href}
                   onClick={(e) => go(e, link.href)}
-                  className="group relative text-[0.7rem] uppercase tracking-[0.22em]"
+                  className="group relative whitespace-nowrap text-[0.7rem] uppercase tracking-[0.22em]"
                 >
                   {link.label}
                   <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-0 bg-current transition-transform duration-500 ease-out group-hover:scale-x-100" />
@@ -193,7 +197,7 @@ export default function Nav() {
             ))}
           </ul>
 
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <ReserveButton size="sm" />
 
             <button
@@ -202,7 +206,7 @@ export default function Nav() {
               aria-expanded={open}
               aria-controls="mobile-menu"
               onClick={() => setOpen((o) => !o)}
-              className="relative -mr-2 flex h-10 w-10 items-center justify-center md:hidden"
+              className="relative -mr-2 flex h-10 w-10 items-center justify-center lg:hidden"
             >
               <span
                 className={`absolute block h-px w-6 bg-current transition-transform duration-500 ease-out ${
@@ -219,21 +223,21 @@ export default function Nav() {
         </nav>
       </header>
 
-      {/* Mobile menu */}
+      {/* Full-screen menu: phones and tablets */}
       <div
         ref={menu}
         id="mobile-menu"
         aria-hidden={!open}
-        className="fixed inset-0 z-[60] flex flex-col justify-between bg-night px-6 pb-10 pt-28 text-ivory md:hidden"
+        className="fixed inset-0 z-[60] flex flex-col justify-between bg-night px-6 pb-10 pt-28 text-ivory md:px-10 md:pb-14 md:pt-36 lg:hidden"
         style={{ visibility: "hidden" }}
       >
-        <ul className="flex flex-col gap-2">
+        <ul className="flex flex-col gap-2 md:gap-3">
           {links.map((link, i) => (
             <li key={link.href} className="overflow-hidden">
               <a
                 href={link.href}
                 onClick={(e) => go(e, link.href)}
-                className="menu-item flex items-baseline gap-4 py-1 font-serif text-5xl leading-[1.1]"
+                className="menu-item flex items-baseline gap-4 py-1 font-serif text-5xl leading-[1.1] md:gap-6 md:text-7xl"
               >
                 <span className="font-sans text-[0.65rem] tracking-[0.3em] text-ivory/40">
                   0{i + 1}
@@ -244,15 +248,17 @@ export default function Nav() {
           ))}
         </ul>
 
-        <div className="menu-foot flex flex-col gap-6">
+        <div className="menu-foot flex flex-col gap-6 md:flex-row md:items-end md:justify-between md:gap-10">
+          <div className="order-2 flex flex-col gap-2 text-[0.65rem] uppercase tracking-[0.3em] text-ivory/50 md:order-1">
+            <p>{site.city}</p>
+            <p>{site.phoneDisplay}</p>
+          </div>
+
           <ReserveButton
             size="lg"
-            className="w-full justify-center"
+            className="order-1 w-full justify-center md:order-2 md:w-auto"
             onNavigate={() => setOpen(false)}
           />
-          <p className="text-[0.65rem] uppercase tracking-[0.3em] text-ivory/50">
-            Lagos, Nigeria
-          </p>
         </div>
       </div>
     </div>

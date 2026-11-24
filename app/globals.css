@@ -39,6 +39,12 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+
+  /* The page must never scroll sideways. "clip" (unlike "hidden" on both
+     html and body) keeps position: sticky working. The first line is a
+     fallback for older browsers that do not know "clip". */
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 ::selection {

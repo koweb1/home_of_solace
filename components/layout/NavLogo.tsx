@@ -1,9 +1,9 @@
 export default function NavLogo() {
   return (
-    <span className="flex items-center gap-3">
+    <span className="flex items-center gap-2.5 whitespace-nowrap sm:gap-3">
       <svg
         viewBox="0 0 120 160"
-        className="h-7 w-[21px]"
+        className="h-6 w-[18px] shrink-0 sm:h-7 sm:w-[21px]"
         fill="none"
         aria-hidden="true"
       >
@@ -28,7 +28,7 @@ export default function NavLogo() {
           strokeLinecap="round"
         />
       </svg>
-      <span className="font-serif text-xl leading-none md:text-2xl">
+      <span className="font-serif text-[0.95rem] leading-none min-[360px]:text-[1.05rem] sm:text-xl md:text-2xl">
         House <em className="text-[0.75em]">of</em> Solace
       </span>
     </span>

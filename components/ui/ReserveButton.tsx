@@ -14,8 +14,8 @@ type ReserveButtonProps = {
 };
 
 const sizes = {
-  sm: "px-5 py-2.5 text-[0.68rem]",
-  lg: "px-9 py-4 text-xs",
+  sm: "px-4 py-2.5 text-[0.62rem] tracking-[0.14em] sm:px-5 sm:text-[0.68rem] sm:tracking-[0.18em]",
+  lg: "px-9 py-4 text-xs tracking-[0.18em]",
 };
 
 export default function ReserveButton({
@@ -85,13 +85,15 @@ export default function ReserveButton({
         if (scrollToSection(href)) e.preventDefault();
         onNavigate?.();
       }}
-      className={`group relative inline-flex items-center gap-2 rounded-full bg-marigold font-medium uppercase tracking-[0.18em] text-night transition-shadow duration-500 will-change-transform hover:shadow-[0_12px_40px_-12px_rgba(233,162,59,0.8)] ${sizes[size]} ${className}`}
+      className={`group relative inline-flex items-center gap-2 whitespace-nowrap rounded-full bg-marigold font-medium uppercase text-night transition-shadow duration-500 will-change-transform hover:shadow-[0_12px_40px_-12px_rgba(233,162,59,0.8)] ${sizes[size]} ${className}`}
     >
       <span ref={inner} className="inline-flex items-center gap-2">
         {label}
         <FiArrowUpRight
           aria-hidden="true"
-          className="transition-transform duration-500 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+          className={`transition-transform duration-500 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5 ${
+            size === "sm" ? "max-[399px]:hidden" : ""
+          }`}
         />
       </span>
     </a>

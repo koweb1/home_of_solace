@@ -67,110 +67,212 @@ const hairline = {
 
 const accent = "text-[#7C3F2A]";
 
+// Counts a number up from 0 inside a timeline
+function addCounter(
+  tl: gsap.core.Timeline,
+  el: HTMLElement | null,
+  at: number,
+  duration: number
+) {
+  if (!el) return;
+  const target = Number(el.dataset.to ?? 0);
+  const counter = { value: 0 };
+  el.textContent = "0";
+  tl.to(
+    counter,
+    {
+      value: target,
+      duration,
+      ease: "power2.out",
+      onUpdate: () => {
+        el.textContent = String(Math.round(counter.value));
+      },
+    },
+    at
+  );
+}
+
 export default function Events() {
   const root = useRef<HTMLDivElement>(null);
 
   useGSAP(
     () => {
-      const reduced = window.matchMedia(
-        "(prefers-reduced-motion: reduce)"
-      ).matches;
-      if (reduced) return;
-
-      // Heading
-      gsap.set(".events-line", { yPercent: 115 });
-      gsap.set(".events-fade", { opacity: 0, y: 24 });
-
-      gsap
-        .timeline({
-          defaults: { ease: "expo.out" },
-          scrollTrigger: {
-            trigger: ".events-head",
-            start: "top 85%",
-            once: true,
-          },
-        })
-        .to(".events-line", { yPercent: 0, duration: 1.4 }, 0)
-        .to(
-          ".events-fade",
-          { opacity: 1, y: 0, duration: 1.1, stagger: 0.12 },
-          0.3
-        );
-
-      // Each event: arch opens, details rise, the number counts up
-      const items = gsap.utils.toArray<HTMLElement>(".event");
-
-      items.forEach((item) => {
-        const q = gsap.utils.selector(item);
-
-        gsap.set(q(".event-arch"), { clipPath: "inset(100% 0% 0% 0%)" });
-        gsap.set(q(".event-scale"), { scale: 1.3 });
-        gsap.set(q(".event-fade"), { opacity: 0, y: 24 });
-
-        const tl = gsap.timeline({
-          defaults: { ease: "expo.out" },
-          scrollTrigger: { trigger: item, start: "top 85%", once: true },
-        });
-
-        tl.to(
-          q(".event-arch"),
-          { clipPath: "inset(0% 0% 0% 0%)", duration: 1.9, ease: "expo.inOut" },
-          0
-        )
-          .to(q(".event-scale"), { scale: 1, duration: 2.4 }, 0)
-          .to(
-            q(".event-fade"),
-            { opacity: 1, y: 0, duration: 1.1, stagger: 0.1 },
-            0.5
-          );
-
-        const count = item.querySelector<HTMLElement>(".event-count");
-        if (count) {
-          const target = Number(count.dataset.to ?? 0);
-          const counter = { value: 0 };
-          count.textContent = "0";
-          tl.to(
-            counter,
-            {
-              value: target,
-              duration: 2.2,
-              ease: "power2.out",
-              onUpdate: () => {
-                count.textContent = String(Math.round(counter.value));
-              },
-            },
-            0.6
-          );
-        }
-      });
-
-      // Desktop only: the arches rise at different speeds while scrolling
       const mm = gsap.matchMedia();
 
-      mm.add("(min-width: 768px)", () => {
-        items.forEach((item) => {
-          gsap.to(item, {
-            y: -Number(item.dataset.rise ?? 0),
-            ease: "none",
+      mm.add(
+        {
+          reduce: "(prefers-reduced-motion: reduce)",
+          phone: "(max-width: 767px)",
+        },
+        (context) => {
+          const { reduce, phone } = context.conditions as {
+            reduce: boolean;
+            phone: boolean;
+          };
+
+          // Reduced motion: gentle fades only, nothing moves
+          if (reduce) {
+            gsap
+              .utils.toArray<HTMLElement>(".events-head, .event, .events-cta")
+              .forEach((el) => {
+                gsap.fromTo(
+                  el,
+                  { opacity: 0 },
+                  {
+                    opacity: 1,
+                    duration: 0.9,
+                    ease: "power1.out",
+                    scrollTrigger: { trigger: el, start: "top 92%", once: true },
+                  }
+                );
+              });
+            return;
+          }
+
+          // Heading
+          gsap.set(".events-line", { yPercent: 115 });
+          gsap.set(".events-fade", { opacity: 0, y: 24 });
+
+          gsap
+            .timeline({
+              defaults: { ease: "expo.out" },
+              scrollTrigger: {
+                trigger: ".events-head",
+                start: phone ? "top 90%" : "top 85%",
+                once: true,
+              },
+            })
+            .to(".events-line", { yPercent: 0, duration: 1.4 }, 0)
+            .to(
+              ".events-fade",
+              { opacity: 1, y: 0, duration: 1.1, stagger: 0.12 },
+              0.3
+            );
+
+          const items = gsap.utils.toArray<HTMLElement>(".event");
+
+          if (phone) {
+            // PHONE: "curtains open". The arch opens sideways from the
+            // centre, the light comes up, then the text slides in.
+            items.forEach((item, i) => {
+              const q = gsap.utils.selector(item);
+              const arch = item.querySelector<HTMLElement>(".event-arch");
+              const text = item.querySelector<HTMLElement>(".event-text");
+              if (!arch || !text) return;
+
+              const fromX = i % 2 === 0 ? -36 : 36;
+
+              gsap.set(arch, { clipPath: "inset(0% 50% 0% 50%)" });
+              gsap.set(q(".event-scale"), { scale: 1.25 });
+              gsap.set(q(".event-veil"), { opacity: 0.7 });
+              gsap.set(q(".event-slide"), { opacity: 0, x: fromX });
+
+              gsap
+                .timeline({
+                  defaults: { ease: "expo.out" },
+                  scrollTrigger: { trigger: arch, start: "top 68%", once: true },
+                })
+                .to(
+                  arch,
+                  {
+                    clipPath: "inset(0% 0% 0% 0%)",
+                    duration: 1.6,
+                    ease: "expo.inOut",
+                  },
+                  0
+                )
+                .to(q(".event-scale"), { scale: 1, duration: 2.4 }, 0)
+                .to(
+                  q(".event-veil"),
+                  { opacity: 0, duration: 1.8, ease: "power2.out" },
+                  0.8
+                );
+
+              const words = gsap.timeline({
+                defaults: { ease: "expo.out" },
+                scrollTrigger: { trigger: text, start: "top 90%", once: true },
+              });
+
+              words.to(
+                q(".event-slide"),
+                { opacity: 1, x: 0, duration: 1.1, stagger: 0.1 },
+                0
+              );
+              addCounter(
+                words,
+                item.querySelector<HTMLElement>(".event-count-m"),
+                0.2,
+                2
+              );
+            });
+          } else {
+            // TABLET AND LAPTOP: unchanged
+            items.forEach((item) => {
+              const q = gsap.utils.selector(item);
+
+              gsap.set(q(".event-arch"), { clipPath: "inset(100% 0% 0% 0%)" });
+              gsap.set(q(".event-scale"), { scale: 1.3 });
+              gsap.set(q(".event-fade"), { opacity: 0, y: 24 });
+
+              const tl = gsap.timeline({
+                defaults: { ease: "expo.out" },
+                scrollTrigger: { trigger: item, start: "top 85%", once: true },
+              });
+
+              tl.to(
+                q(".event-arch"),
+                {
+                  clipPath: "inset(0% 0% 0% 0%)",
+                  duration: 1.9,
+                  ease: "expo.inOut",
+                },
+                0
+              )
+                .to(q(".event-scale"), { scale: 1, duration: 2.4 }, 0)
+                .to(
+                  q(".event-fade"),
+                  { opacity: 1, y: 0, duration: 1.1, stagger: 0.1 },
+                  0.5
+                );
+
+              addCounter(
+                tl,
+                item.querySelector<HTMLElement>(".event-count"),
+                0.6,
+                2.2
+              );
+            });
+
+            // The arches rise at different speeds while scrolling
+            items.forEach((item) => {
+              gsap.to(item, {
+                y: -Number(item.dataset.rise ?? 0),
+                ease: "none",
+                scrollTrigger: {
+                  trigger: item,
+                  start: "top bottom",
+                  end: "bottom top",
+                  scrub: true,
+                },
+              });
+            });
+          }
+
+          // Closing line and button
+          gsap.set(".events-cta", { opacity: 0, y: 24 });
+          gsap.to(".events-cta", {
+            opacity: 1,
+            y: 0,
+            duration: 1.1,
+            ease: "expo.out",
             scrollTrigger: {
-              trigger: item,
-              start: "top bottom",
-              end: "bottom top",
-              scrub: true,
+              trigger: ".events-cta",
+              start: phone ? "top 96%" : "top 92%",
+              once: true,
             },
           });
-        });
-      });
-
-      // Closing line and button
-      gsap.set(".events-cta", { opacity: 0, y: 24 });
-      gsap.to(".events-cta", {
-        opacity: 1,
-        y: 0,
-        duration: 1.1,
-        ease: "expo.out",
-        scrollTrigger: { trigger: ".events-cta", start: "top 92%", once: true },
-      });
+        }
+      );
 
       return () => mm.revert();
     },
@@ -216,7 +318,7 @@ export default function Events() {
             className={`event ${event.offset}`}
           >
             <div className="event-arch relative aspect-[2/3] overflow-hidden rounded-t-full">
-              <div className="event-scale h-full w-full">
+              <div className="event-scale relative h-full w-full">
                 {event.image ? (
                   <Image
                     src={event.image}
@@ -232,9 +334,54 @@ export default function Events() {
                   />
                 )}
               </div>
+
+              {/* Phone: the veil that lifts to bring the light up */}
+              <div
+                aria-hidden="true"
+                className="event-veil pointer-events-none absolute inset-0 bg-night opacity-0 md:hidden"
+              />
             </div>
 
-            <div className="mt-7">
+            {/* Phone: title, one stat line, paragraph, link */}
+            <div className="event-text mt-8 md:hidden">
+              <h4
+                className="event-slide font-serif text-[2rem] leading-[1.05] tracking-[-0.01em]"
+                style={{ fontVariationSettings: '"SOFT" 70' }}
+              >
+                {event.kind}
+              </h4>
+
+              <p className="event-slide mt-5 flex items-center gap-4">
+                <span
+                  className="event-count-m font-serif text-[3.75rem] leading-none tabular-nums"
+                  data-to={event.count}
+                >
+                  {event.count}
+                </span>
+                <span className="font-serif text-lg italic leading-snug opacity-80">
+                  {event.unit} {event.place}
+                </span>
+              </p>
+
+              <p className="event-slide mt-5 max-w-sm text-base leading-relaxed opacity-75">
+                {event.text}
+              </p>
+
+              <a
+                href="#reserve"
+                onClick={(e) => {
+                  saveEnquiry({ type: "event", name: event.kind });
+                  if (scrollToSection("#reserve")) e.preventDefault();
+                }}
+                className="event-slide group relative mt-6 inline-block text-[0.7rem] uppercase tracking-[0.22em]"
+              >
+                Plan this event
+                <span className="absolute -bottom-1 left-0 h-px w-full origin-left scale-x-100 bg-current transition-transform duration-500 ease-out group-hover:scale-x-0" />
+              </a>
+            </div>
+
+            {/* Tablet and laptop: as before */}
+            <div className="mt-7 hidden md:block">
               <p className="event-fade text-[0.65rem] uppercase tracking-[0.3em] opacity-60">
                 {event.kind}
               </p>

@@ -256,21 +256,22 @@ export default function Events() {
                 },
               });
             });
-          }
 
-          // Closing line and button
-          gsap.set(".events-cta", { opacity: 0, y: 24 });
-          gsap.to(".events-cta", {
-            opacity: 1,
-            y: 0,
-            duration: 1.1,
-            ease: "expo.out",
-            scrollTrigger: {
-              trigger: ".events-cta",
-              start: phone ? "top 96%" : "top 92%",
-              once: true,
-            },
-          });
+            // Closing line and button (on phones this block is merged into
+            // the closing block of the Dining section)
+            gsap.set(".events-cta", { opacity: 0, y: 24 });
+            gsap.to(".events-cta", {
+              opacity: 1,
+              y: 0,
+              duration: 1.1,
+              ease: "expo.out",
+              scrollTrigger: {
+                trigger: ".events-cta",
+                start: "top 92%",
+                once: true,
+              },
+            });
+          }
         }
       );
 
@@ -342,8 +343,10 @@ export default function Events() {
               />
             </div>
 
-            {/* Phone: title, one stat line, paragraph, link */}
-            <div className="event-text mt-8 md:hidden">
+            {/* Phone: title, one stat line, paragraph, link.
+                overflow-x-clip: a block waiting at the side can never
+                make the page wider than the screen */}
+            <div className="event-text mt-8 overflow-x-clip md:hidden">
               <h4
                 className="event-slide font-serif text-[2rem] leading-[1.05] tracking-[-0.01em]"
                 style={{ fontVariationSettings: '"SOFT" 70' }}
@@ -410,12 +413,13 @@ export default function Events() {
         ))}
       </ul>
 
-      {/* Event enquiry: outlined, marigold stays for Reserve only */}
+      {/* Event enquiry, tablet and laptop only. On a phone it is merged into
+          the closing block of the Dining section. Marigold stays for Reserve. */}
       <div
-        className="events-cta mt-24 flex flex-col items-start gap-6 border-t pt-12 md:mt-36 md:flex-row md:items-center md:justify-between"
+        className="events-cta mt-24 hidden flex-col items-start gap-6 border-t pt-12 md:mt-36 md:flex md:flex-row md:items-center md:justify-between"
         style={hairline}
       >
-        <p className="max-w-md font-serif text-2xl leading-snug md:text-3xl">
+        <p className="max-w-md text-balance font-serif text-2xl leading-snug md:text-3xl">
           Planning something bigger? Tell us the date and how many are coming.
         </p>
 

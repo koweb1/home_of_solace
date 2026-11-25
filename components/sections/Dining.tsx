@@ -27,8 +27,8 @@ const venues: Venue[] = [
     kind: "Restaurant",
     hours: "Daily · 07:00 – 23:00",
     text: "A Nigerian-led kitchen. Smoky jollof, slow stews and fish done the way it should be, at one very long table.",
-    image: "/images/dining/table.jpg",
-    imagePath: "public/images/dining/table.jpg",
+    image: "/images/dining/long-table.jpg",
+    imagePath: "public/images/dining/long-table.jpg",
     imageAlt: "The Long Table restaurant at House of Solace",
   },
   {
@@ -469,15 +469,35 @@ export default function Dining() {
 
         <Events />
 
-        {/* Closing line with the main Reserve action */}
+        {/* Closing block. Phone: the only closing block, with the event
+            enquiry as a small link under the Reserve button.
+            Tablet and laptop: the event enquiry has its own block above. */}
         <div
-          className="dining-cta mt-28 flex flex-col items-start gap-8 border-t pt-12 md:mt-40 md:flex-row md:items-center md:justify-between"
+          className="dining-cta mt-24 flex flex-col items-start gap-8 border-t pt-12 md:mt-40 md:flex-row md:items-center md:justify-between"
           style={hairline}
         >
-          <p className="max-w-md font-serif text-2xl leading-snug md:text-3xl">
+          <p className="max-w-md text-balance font-serif text-2xl leading-snug md:text-3xl">
             Evenings fill up first. Save yours.
           </p>
-          <ReserveButton size="lg" label="Reserve your evening" />
+
+          <div className="flex flex-col items-start gap-6">
+            <ReserveButton size="lg" label="Reserve your evening" />
+
+            <a
+              href="#reserve"
+              onClick={(e) => {
+                saveEnquiry({ type: "event" });
+                if (scrollToSection("#reserve")) e.preventDefault();
+              }}
+              className="font-serif text-lg italic leading-snug opacity-80 transition-opacity duration-500 hover:opacity-100 md:hidden"
+            >
+              Planning an event?{" "}
+              <span className="underline underline-offset-4">
+                Tell us the date
+              </span>
+              <span aria-hidden="true"> →</span>
+            </a>
+          </div>
         </div>
       </div>
     </section>

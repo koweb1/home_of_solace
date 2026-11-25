@@ -1,616 +1,910 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Image from "next/image";
-import { gsap, ScrollTrigger, useGSAP } from "@/lib/gsap";
+import type { IconType } from "react-icons";
+import { FaWhatsapp } from "react-icons/fa";
+import { FiArrowUpRight, FiMail, FiMapPin, FiPhone } from "react-icons/fi";
+import { gsap, useGSAP } from "@/lib/gsap";
+import LogoMark from "@/components/layout/Logo";
+import { site } from "@/lib/site";
+import { submitReservation } from "@/services/reservations";
+import type { StayRequest } from "@/types/booking";
+import type {
+  FormState,
+  ReservationData,
+  ReservationMode,
+} from "@/types/reservation";
+import type { Enquiry } from "@/utils/saveEnquiry";
+import { buildSummary, buildWhatsAppUrl } from "@/utils/reservationMessage";
 
-type Voice = {
-  time: string;
-  place: string;
-  before: string;
-  key: string; // the phrase picked out in clay
-  after: string;
-  name: string;
-  from: string;
-  stay: string;
-  image: string;
-  imageAlt: string;
-};
-
-// Sample copy with made-up names. Replace with real reviews when you have them.
-// The photos are ones already on the site (all 3:4).
-const voices: Voice[] = [
-  {
-    time: "06:40",
-    place: "The pool",
-    before:
-      "I came for a weekend between two work trips. By half past six I was in the pool, alone, and I realised I had ",
-    key: "left my phone in the room",
-    after: ". Lagos has never been this quiet for me.",
-    name: "Adaeze O.",
-    from: "Abuja",
-    stay: "Garden Room",
-    image: "/images/gallery/pool-dusk.jpg",
-    imageAlt: "The pool at House of Solace",
-  },
-  {
-    time: "13:15",
-    place: "The Lagoon Suite",
-    before:
-      "We meant to rest for an hour after lunch. We woke up at five with the balcony doors still open, and ",
-    key: "the lagoon had gone gold",
-    after: ". Best nap of our marriage.",
-    name: "Tunde & Ife B.",
-    from: "Ibadan",
-    stay: "Lagoon Suite",
-    image: "/images/rooms/lagoon-suite.jpg",
-    imageAlt: "The Lagoon Suite at House of Solace",
-  },
-  {
-    time: "22:10",
-    place: "Ember Deck",
-    before:
-      "Suya off the grill, a cold drink in my hand, the lagoon black and still. ",
-    key: "I did not check the time once",
-    after: ". For a man who lives by his calendar, that is the whole review.",
-    name: "Kelechi M.",
-    from: "Port Harcourt",
-    stay: "Courtyard Villa",
-    image: "/images/gallery/ember-deck-night.jpg",
-    imageAlt: "Ember Deck glowing after dark at House of Solace",
-  },
+const modes: { id: ReservationMode; label: string }[] = [
+  { id: "stay", label: "A stay" },
+  { id: "table", label: "A table" },
+  { id: "event", label: "An event" },
 ];
 
-type Mode = "list" | "stage" | "swipe";
-
-const accent = "text-[#D99A78]";
-const total = voices.length;
-const pad = (n: number) => String(n).padStart(2, "0");
-
-const hairline = {
-  borderColor: "color-mix(in srgb, currentColor 18%, transparent)",
-};
-
-// The picked-out phrase gets an underline that can be drawn in
-const markStyle: React.CSSProperties = {
-  backgroundImage: "linear-gradient(currentColor, currentColor)",
-  backgroundRepeat: "no-repeat",
-  backgroundPosition: "0 100%",
-  backgroundSize: "100% 1px",
-  WebkitBoxDecorationBreak: "clone",
-  boxDecorationBreak: "clone",
-  paddingBottom: "0.08em",
-};
-
-const softStyle = { fontVariationSettings: '"SOFT" 70' };
-
-function Time({
+const roomOptions = [
+  "Not sure yet",
+  "Garden Room",
+  "Lagoon Suite",
+  "Courtyard Villa",
+  "The Solace House",
+];
+const venueOptions = ["The Long Table", "Ember Deck", "The Palm Bar"];
+const eventOptions = [
+  "Not sure yet",
+  "Weddings & owambes",
+  "Corporate retreats",
+  "Private dinners",
+  "Something else",
+];
+const guestOptions = ["1", "2", "3", "4", "5", "6", "7+"].map((value) => ({
   value,
-  lineClass,
-  className,
-}: {
+  label: value === "1" ? "1 guest" : `${value} guests`,
+}));
+
+const submitLabel: Record<ReservationMode, string> = {
+  stay: "Reserve my stay",
+  table: "Reserve my table",
+  event: "Send event enquiry",
+};
+
+const emptyForm: FormState = {
+  room: "Not sure yet",
+  checkIn: "",
+  checkOut: "",
+  venue: "The Long Table",
+  time: "19:00",
+  eventType: "Not sure yet",
+  date: "",
+  guests: "2",
+  name: "",
+  phone: "",
+  email: "",
+  notes: "",
+};
+
+const contacts: {
+  icon: IconType;
+  label: string;
   value: string;
-  lineClass: string;
-  className: string;
-}) {
-  const [h, m] = value.split(":");
+  href?: string;
+}[] = [
+  {
+    icon: FaWhatsapp,
+    label: "WhatsApp",
+    value: site.phoneDisplay,
+    href: `https://wa.me/${site.whatsapp}`,
+  },
+  {
+    icon: FiPhone,
+    label: "Call",
+    value: site.phoneDisplay,
+    href: `tel:${site.phoneHref}`,
+  },
+  {
+    icon: FiMail,
+    label: "Email",
+    value: site.email,
+    href: `mailto:${site.email}`,
+  },
+  { icon: FiMapPin, label: "Find us", value: site.address },
+];
+
+const labelClass = "text-[0.6rem] uppercase tracking-[0.25em] opacity-60";
+const controlClass =
+  "mt-2 w-full border-b border-ivory/25 bg-transparent pb-3 font-sans text-base text-ivory outline-none transition-colors duration-500 placeholder:text-ivory/30 focus:border-ivory [color-scheme:dark]";
+const accent = "text-[#D99A78]";
+
+const toISODate = (date: Date) => {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 10);
+};
+
+const prefersReducedMotion = () =>
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function validate(mode: ReservationMode, f: FormState) {
+  const errors: Record<string, string> = {};
+
+  if (mode === "stay") {
+    if (!f.checkIn) errors.checkIn = "Choose your check-in date.";
+    if (!f.checkOut) errors.checkOut = "Choose your check-out date.";
+    else if (f.checkIn && f.checkOut <= f.checkIn)
+      errors.checkOut = "Check-out must be after check-in.";
+  }
+
+  if (mode === "table") {
+    if (!f.date) errors.date = "Choose a date.";
+    if (!f.time) errors.time = "Choose a time.";
+  }
+
+  if (mode === "event") {
+    if (!f.date) errors.date = "Choose a date.";
+    if (!f.guests || Number(f.guests) < 1)
+      errors.guests = "Roughly how many guests?";
+  }
+
+  if (f.name.trim().length < 2) errors.name = "Please tell us your name.";
+  if (f.phone.replace(/\D/g, "").length < 10)
+    errors.phone = "Add a number we can reach, ideally on WhatsApp.";
+  if (f.email && !/^\S+@\S+\.\S+$/.test(f.email))
+    errors.email = "That email doesn’t look right.";
+
+  return errors;
+}
+
+type FieldProps = {
+  id: string;
+  label: string;
+  error?: string;
+  optional?: boolean;
+  className?: string;
+  children: React.ReactNode;
+};
+
+function Field({ id, label, error, optional, className = "", children }: FieldProps) {
   return (
-    <p className={className} style={softStyle}>
-      <span className="block overflow-hidden pb-[0.08em]">
-        <span className={`${lineClass} block`}>
-          {h}
-          <span className={accent}>:</span>
-          {m}
-        </span>
-      </span>
-    </p>
+    <div className={`mode-field ${className}`}>
+      <label htmlFor={`field-${id}`} className={`block ${labelClass}`}>
+        {label}
+        {optional && (
+          <span className="ml-2 normal-case tracking-normal opacity-70">
+            optional
+          </span>
+        )}
+      </label>
+      {children}
+      {error && (
+        <p role="alert" className="mt-2 text-xs text-[#F0A58A]">
+          {error}
+        </p>
+      )}
+    </div>
   );
 }
 
-function Quote({ voice, className }: { voice: Voice; className: string }) {
-  return (
-    <blockquote className={className}>
-      <p>
-        <span className={accent}>“</span>
-        {voice.before}
-        <span className={`v-mark italic ${accent}`} style={markStyle}>
-          {voice.key}
-        </span>
-        {voice.after}
-        <span className={accent}>”</span>
-      </p>
-    </blockquote>
-  );
-}
+export default function Reserve() {
+  const root = useRef<HTMLElement>(null);
+  const formBody = useRef<HTMLDivElement>(null);
+  const sentTitle = useRef<HTMLHeadingElement>(null);
+  const firstMode = useRef(true);
+  const firstStatus = useRef(true);
 
-function Who({ voice, className }: { voice: Voice; className: string }) {
-  return (
-    <figcaption className={className}>
-      <span className="font-serif text-xl">{voice.name}</span>
-      <span className="text-[0.65rem] uppercase tracking-[0.3em] opacity-60">
-        {voice.from}
-      </span>
-      <span className={`text-sm italic ${accent}`}>
-        Stayed in the {voice.stay}
-      </span>
-    </figcaption>
-  );
-}
+  const [mode, setMode] = useState<ReservationMode>("stay");
+  const [form, setForm] = useState<FormState>(emptyForm);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
+  const [sent, setSent] = useState<ReservationData | null>(null);
+  const [today, setToday] = useState("");
 
-function Label({ className = "" }: { className?: string }) {
-  return (
-    <p
-      className={`flex items-center gap-4 text-[0.68rem] uppercase tracking-[0.3em] ${accent} ${className}`}
-    >
-      <span className="h-px w-10 bg-[#D99A78]" />
-      Voices · Overheard at Solace
-    </p>
-  );
-}
-
-export default function Voices() {
-  const root = useRef<HTMLDivElement>(null);
-  const swipe = useRef<HTMLDivElement>(null);
-  const raf = useRef(0);
-
-  // "list" is the safe default (also used for reduced motion and before load)
-  const [mode, setMode] = useState<Mode>("list");
-  const [active, setActive] = useState(0);
-
-  // Pick the layout: laptop, phone, or reduced motion
+  // Today's date, read in the browser so server and client markup match
   useEffect(() => {
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const wide = window.matchMedia("(min-width: 768px)");
+    setToday(toISODate(new Date()));
+  }, []);
 
-    const update = () =>
-      setMode(reduce.matches ? "list" : wide.matches ? "stage" : "swipe");
+  // Fill the form from what the visitor chose earlier on the page
+  useEffect(() => {
+    const read = <T,>(key: string): T | null => {
+      try {
+        const raw = sessionStorage.getItem(key);
+        return raw ? (JSON.parse(raw) as T) : null;
+      } catch {
+        return null;
+      }
+    };
 
-    update();
-    reduce.addEventListener("change", update);
-    wide.addEventListener("change", update);
+    const applyRequest = (r: StayRequest) => {
+      setMode("stay");
+      setForm((f) => ({
+        ...f,
+        checkIn: r.checkIn || f.checkIn,
+        checkOut: r.checkOut || f.checkOut,
+        guests: r.guests || f.guests,
+      }));
+    };
+
+    const applyRoom = (name: string) => {
+      setMode("stay");
+      setForm((f) => ({ ...f, room: name }));
+    };
+
+    const applyEnquiry = (e: Enquiry) => {
+      if (e.type === "table") {
+        setMode("table");
+        setForm((f) => ({ ...f, venue: e.name ?? f.venue }));
+      } else {
+        setMode("event");
+      }
+    };
+
+    const savedRequest = read<StayRequest>("solace:request");
+    if (savedRequest) applyRequest(savedRequest);
+
+    try {
+      const savedRoom = sessionStorage.getItem("solace:room");
+      if (savedRoom) applyRoom(savedRoom);
+    } catch {
+      // Storage can be blocked in private mode.
+    }
+
+    const savedEnquiry = read<Enquiry>("solace:enquiry");
+    if (savedEnquiry) applyEnquiry(savedEnquiry);
+
+    const onPrefill = (e: Event) =>
+      applyRequest((e as CustomEvent<StayRequest>).detail);
+    const onRoom = (e: Event) => applyRoom((e as CustomEvent<string>).detail);
+    const onEnquiry = (e: Event) =>
+      applyEnquiry((e as CustomEvent<Enquiry>).detail);
+
+    window.addEventListener("solace:prefill", onPrefill);
+    window.addEventListener("solace:room", onRoom);
+    window.addEventListener("solace:enquiry", onEnquiry);
 
     return () => {
-      reduce.removeEventListener("change", update);
-      wide.removeEventListener("change", update);
+      window.removeEventListener("solace:prefill", onPrefill);
+      window.removeEventListener("solace:room", onRoom);
+      window.removeEventListener("solace:enquiry", onEnquiry);
     };
   }, []);
 
-  // The layout changes the page height, so everything below recalculates
-  useEffect(() => {
-    const id = requestAnimationFrame(() => ScrollTrigger.refresh());
-    return () => cancelAnimationFrame(id);
-  }, [mode]);
-
-  // Stop any pending scroll frame when the component goes away
-  useEffect(() => {
-    return () => cancelAnimationFrame(raf.current);
-  }, []);
-
-  // 1. Laptop: the scroll steps through the voices
+  // 1. Entrance when the chapter arrives
   useGSAP(
     () => {
-      if (mode !== "stage") return;
+      if (prefersReducedMotion()) return;
 
-      const wrapper = root.current?.querySelector<HTMLElement>(".v-wrap");
-      if (!wrapper) return;
+      gsap.set(".reserve-line", { yPercent: 115 });
+      gsap.set(".reserve-fade", { opacity: 0, y: 24 });
+      gsap.set(".reserve-panel", { opacity: 0, y: 70 });
 
-      const slides = gsap.utils.toArray<HTMLElement>(".v-slide", wrapper);
-      const photos = gsap.utils.toArray<HTMLElement>(".v-photo", wrapper);
-      const scales = gsap.utils.toArray<HTMLElement>(".v-photo-scale", wrapper);
-
-      // Starting states: only the first voice is showing
-      slides.forEach((slide, i) => {
-        if (i === 0) return;
-        const q = gsap.utils.selector(slide);
-        gsap.set(q(".v-line"), { yPercent: 115 });
-        gsap.set(q(".v-fade"), { opacity: 0, y: 30 });
-        gsap.set(q(".v-mark"), { backgroundSize: "0% 1px" });
-      });
-
-      photos.forEach((photo, i) => {
-        if (i === 0) return;
-        gsap.set(photo, { opacity: 0 });
-        gsap.set(scales[i], { scale: 1.12 });
-      });
-
-      gsap.set(".v-bar", { scaleX: 0 });
-
-      // The whole panel fades up as the section arrives
-      gsap.from(".v-stage-inner", {
-        opacity: 0,
-        y: 40,
-        duration: 1.2,
-        ease: "expo.out",
-        scrollTrigger: { trigger: wrapper, start: "top 75%", once: true },
-      });
-
-      // One scrubbed timeline: hold, change voice, hold, change voice, hold
-      const HOLD = 0.8;
-      const MOVE = 0.5;
-      const count = slides.length;
-      const end = HOLD + (count - 1) * (MOVE + HOLD);
-
-      const tl = gsap.timeline({
-        defaults: { ease: "none" },
-        scrollTrigger: {
-          trigger: wrapper,
-          start: "top top",
-          end: "bottom bottom",
-          scrub: 0.6,
-        },
-      });
-
-      slides.forEach((slide, i) => {
-        const next = slides[i + 1];
-        if (!next) return;
-
-        const T = HOLD + i * (MOVE + HOLD);
-        const now = gsap.utils.selector(slide);
-        const then = gsap.utils.selector(next);
-
-        // The current voice slides up and away
-        tl.to(
-          now(".v-line"),
-          { yPercent: -115, duration: MOVE * 0.55, ease: "power2.in" },
-          T
+      gsap
+        .timeline({
+          defaults: { ease: "expo.out" },
+          scrollTrigger: {
+            trigger: root.current,
+            start: "top 65%",
+            once: true,
+          },
+        })
+        .to(".reserve-line", { yPercent: 0, duration: 1.4, stagger: 0.12 }, 0)
+        .to(
+          ".reserve-fade",
+          { opacity: 1, y: 0, duration: 1.1, stagger: 0.1 },
+          0.3
         )
-          .to(
-            now(".v-fade"),
-            { opacity: 0, y: -30, duration: MOVE * 0.5, ease: "power2.in" },
-            T
-          )
-          // The photo of the place changes
-          .to(
-            photos[i],
-            { opacity: 0, duration: MOVE, ease: "power1.inOut" },
-            T
-          )
-          .to(
-            photos[i + 1],
-            { opacity: 1, duration: MOVE, ease: "power1.inOut" },
-            T
-          )
-          .to(
-            scales[i + 1],
-            { scale: 1, duration: MOVE * 1.6, ease: "power2.out" },
-            T
-          )
-          // The next voice rises in
-          .to(
-            then(".v-line"),
-            { yPercent: 0, duration: MOVE * 0.6, ease: "power3.out" },
-            T + MOVE * 0.4
-          )
-          .to(
-            then(".v-fade"),
-            {
-              opacity: 1,
-              y: 0,
-              duration: MOVE * 0.6,
-              stagger: 0.04,
-              ease: "power3.out",
-            },
-            T + MOVE * 0.45
-          )
-          .to(
-            then(".v-mark"),
-            { backgroundSize: "100% 1px", duration: MOVE * 0.5, ease: "power2.out" },
-            T + MOVE * 0.9
-          );
-      });
-
-      // Progress line along the bottom
-      tl.to(".v-bar", { scaleX: 1, duration: end, ease: "none" }, 0);
+        .to(".reserve-panel", { opacity: 1, y: 0, duration: 1.6 }, 0.2);
     },
-    { scope: root, dependencies: [mode], revertOnUpdate: true }
+    { scope: root }
   );
 
-  // 2. Phone: the voice you land on rises into place
+  // 2. Fields glide in when the form switches between stay, table and event
   useGSAP(
     () => {
-      if (mode !== "swipe") return;
-
-      const card = root.current?.querySelectorAll<HTMLElement>(".m-card")[active];
-      if (!card) return;
-
-      const q = gsap.utils.selector(card);
-      const trigger = { trigger: card, start: "top 85%", once: true };
+      if (firstMode.current) {
+        firstMode.current = false;
+        return;
+      }
+      if (prefersReducedMotion()) return;
 
       gsap.fromTo(
-        q(".m-line"),
-        { yPercent: 115 },
-        {
-          yPercent: 0,
-          duration: 1.2,
-          ease: "expo.out",
-          scrollTrigger: trigger,
-        }
-      );
-
-      gsap.fromTo(
-        q(".m-fade"),
-        { opacity: 0, y: 24 },
+        ".mode-field",
+        { opacity: 0, y: 16 },
         {
           opacity: 1,
           y: 0,
-          duration: 1.1,
-          stagger: 0.08,
-          delay: 0.1,
+          duration: 0.7,
+          stagger: 0.05,
           ease: "expo.out",
-          scrollTrigger: trigger,
+          clearProps: "opacity,transform",
         }
       );
     },
-    { scope: root, dependencies: [mode, active], revertOnUpdate: true }
+    { scope: root, dependencies: [mode] }
   );
 
-  const stepWidth = () => {
-    const card = swipe.current?.querySelector<HTMLElement>(".m-card");
-    return card ? card.offsetWidth + 16 : 0; // 16 = gap-4
-  };
+  // 3. Pulsing ring on the button, and the success moment
+  useGSAP(
+    () => {
+      const reduced = prefersReducedMotion();
 
-  const onSwipeScroll = () => {
-    if (raf.current) return;
-    raf.current = requestAnimationFrame(() => {
-      raf.current = 0;
-      const el = swipe.current;
-      const step = stepWidth();
-      if (!el || !step) return;
-      const index = Math.round(el.scrollLeft / step);
-      setActive(Math.min(total - 1, Math.max(0, index)));
+      if (status === "idle") {
+        if (!reduced) {
+          gsap.fromTo(
+            ".reserve-ring",
+            { scale: 1, opacity: 0.55 },
+            {
+              scale: 1.14,
+              opacity: 0,
+              duration: 2.4,
+              ease: "power2.out",
+              repeat: -1,
+              repeatDelay: 0.8,
+            }
+          );
+
+          if (!firstStatus.current && formBody.current) {
+            gsap.fromTo(
+              formBody.current,
+              { opacity: 0, y: 20 },
+              { opacity: 1, y: 0, duration: 0.8, ease: "expo.out" }
+            );
+          }
+        }
+        firstStatus.current = false;
+        return;
+      }
+
+      if (status === "sent") {
+        sentTitle.current?.focus({ preventScroll: true });
+
+        if (reduced) {
+          gsap.set(".logo-arch, .logo-base", { strokeDashoffset: 0 });
+          gsap.set(".logo-sun", { opacity: 1 });
+          return;
+        }
+
+        gsap.set(".sent-line", { yPercent: 115 });
+        gsap.set(".sent-fade", { opacity: 0, y: 20 });
+
+        gsap
+          .timeline({ defaults: { ease: "expo.out" } })
+          .to(
+            ".logo-base",
+            { strokeDashoffset: 0, duration: 0.9, ease: "power2.inOut" },
+            0
+          )
+          .to(
+            ".logo-arch",
+            { strokeDashoffset: 0, duration: 1.3, ease: "power2.inOut" },
+            0.15
+          )
+          .fromTo(
+            ".logo-sun",
+            { y: 24, opacity: 0 },
+            { y: 0, opacity: 1, duration: 1.2 },
+            0.9
+          )
+          .to(".sent-line", { yPercent: 0, duration: 1.3 }, 1.1)
+          .to(
+            ".sent-fade",
+            { opacity: 1, y: 0, duration: 1, stagger: 0.1 },
+            1.3
+          );
+      }
+    },
+    { scope: root, dependencies: [status], revertOnUpdate: true }
+  );
+
+  const update = <K extends keyof FormState>(key: K, value: FormState[K]) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((current) => {
+      if (!current[key]) return current;
+      const next = { ...current };
+      delete next[key];
+      return next;
     });
   };
 
-  const goTo = (index: number) => {
-    swipe.current?.scrollTo({ left: index * stepWidth(), behavior: "smooth" });
+  const handleCheckIn = (value: string) => {
+    update("checkIn", value);
+    if (form.checkOut && form.checkOut <= value) update("checkOut", "");
   };
 
+  const switchMode = (next: ReservationMode) => {
+    if (next === mode) return;
+    setMode(next);
+    setErrors({});
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (status !== "idle") return;
+
+    const found = validate(mode, form);
+    setErrors(found);
+
+    const firstError = Object.keys(found)[0];
+    if (firstError) {
+      document.getElementById(`field-${firstError}`)?.focus();
+      return;
+    }
+
+    setStatus("sending");
+    const data: ReservationData = { mode, ...form };
+
+    try {
+      const result = await submitReservation(data);
+      if (!result.ok) throw new Error("Request failed");
+    } catch {
+      setStatus("idle");
+      setErrors({
+        form: "Something went wrong. Please try again, or message us on WhatsApp.",
+      });
+      return;
+    }
+
+    setSent(data);
+
+    const body = formBody.current;
+    if (body && !prefersReducedMotion()) {
+      gsap.to(body, {
+        opacity: 0,
+        y: -16,
+        duration: 0.5,
+        ease: "power2.in",
+        onComplete: () => setStatus("sent"),
+      });
+    } else {
+      setStatus("sent");
+    }
+  };
+
+  const firstName = sent?.name.trim().split(/\s+/)[0] ?? "";
+
   return (
-    <div ref={root} className="relative">
-      {/* LAPTOP: a panel that sticks while the scroll steps through the voices */}
-      {mode === "stage" && (
-        <div className="v-wrap relative h-[300svh]">
-          <div className="sticky top-0 flex h-screen items-center overflow-hidden px-10 pt-16">
-            <div className="v-stage-inner mx-auto grid w-full max-w-[90rem] grid-cols-12 items-center gap-10">
-              <div className="col-span-7 pr-6">
-                <h3 className="sr-only">Overheard at Solace</h3>
-                <Label className="mb-8" />
-
-                <div className="grid">
-                  {voices.map((voice, i) => (
-                    <figure
-                      key={voice.name}
-                      className="v-slide"
-                      style={{ gridArea: "1 / 1" }}
-                    >
-                      <p className="v-fade flex items-center gap-4 text-[0.65rem] uppercase tracking-[0.3em]">
-                        <span className="opacity-60">
-                          {pad(i + 1)} / {pad(total)}
-                        </span>
-                        <span className="h-px w-8 bg-current opacity-40" />
-                        {voice.place}
-                      </p>
-
-                      <Time
-                        value={voice.time}
-                        lineClass="v-line"
-                        className="mt-3 font-serif text-[clamp(4rem,16vh,9rem)] leading-[0.95] tracking-[-0.03em] tabular-nums"
-                      />
-
-                      <Quote
-                        voice={voice}
-                        className="v-fade mt-5 max-w-[38rem] font-serif text-[clamp(1.25rem,min(2vw,3.6vh),2rem)] leading-[1.25] tracking-[-0.01em]"
-                      />
-
-                      <Who
-                        voice={voice}
-                        className="v-fade mt-6 flex flex-wrap items-baseline gap-x-5 gap-y-1"
-                      />
-                    </figure>
-                  ))}
-                </div>
-              </div>
-
-              {/* The place being talked about */}
-              <div className="col-span-5 flex justify-end">
-                <div className="relative aspect-[3/4] h-[62svh] max-h-[42rem]">
-                  <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute -inset-4 rounded-t-full border border-ivory/20"
-                  />
-                  <div className="absolute inset-0 overflow-hidden rounded-t-full bg-dusk">
-                    {voices.map((voice) => (
-                      <div key={voice.image} className="v-photo absolute inset-0">
-                        <div className="v-photo-scale absolute inset-0">
-                          <Image
-                            src={voice.image}
-                            alt={voice.imageAlt}
-                            fill
-                            sizes="34vw"
-                            className="object-cover"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div
-              aria-hidden="true"
-              className="absolute inset-x-10 bottom-8 h-px bg-ivory/20"
-            >
-              <div className="v-bar h-full origin-left bg-ivory" />
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* PHONE: swipe through the voices */}
-      {mode === "swipe" && (
-        <div className="pb-24 pt-20">
-          <div className="px-5">
-            <Label />
-            <h3
-              className="mt-6 font-serif text-[2.6rem] leading-[1.02] tracking-[-0.02em]"
-              style={softStyle}
-            >
-              Overheard at <em className={accent}>Solace</em>.
-            </h3>
-          </div>
-
-          <div
-            ref={swipe}
-            onScroll={onSwipeScroll}
-            className="mt-10 flex snap-x snap-mandatory scroll-pl-5 gap-4 overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    <section
+      id="reserve"
+      data-tone="night"
+      ref={root}
+      className="relative px-5 pb-28 pt-28 md:px-10 md:pb-44 md:pt-44"
+    >
+      <div className="mx-auto grid max-w-[90rem] gap-16 md:grid-cols-12 md:items-start md:gap-x-10 md:gap-y-12">
+        {/* Heading */}
+        <div className="md:col-span-5 md:row-start-1">
+          <p
+            className={`reserve-fade flex items-center gap-4 text-[0.68rem] uppercase tracking-[0.3em] ${accent}`}
           >
-            {voices.map((voice, i) => (
-              <figure key={voice.name} className="m-card w-[86%] shrink-0 snap-start">
-                <div className="relative aspect-[4/5] overflow-hidden rounded-t-full bg-dusk">
-                  <Image
-                    src={voice.image}
-                    alt={voice.imageAlt}
-                    fill
-                    sizes="86vw"
-                    className="object-cover"
-                  />
-                </div>
+            <span className="h-px w-10 bg-[#D99A78]" />
+            06 — Night · Reserve
+          </p>
 
-                {/* The text fades back on the card you are not on, so a
-                    half-visible neighbour never competes with the quote */}
-                <div
-                  className={`mt-7 transition-opacity duration-500 ${
-                    active === i ? "opacity-100" : "opacity-40"
-                  }`}
-                >
-                  <p className="m-fade flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.28em]">
-                    <span className="opacity-60">
-                      {pad(i + 1)} / {pad(total)}
-                    </span>
-                    <span className="h-px w-6 bg-current opacity-40" />
-                    {voice.place}
-                  </p>
+          <h2
+            className="mt-8 font-serif text-[clamp(2.8rem,6.6vw,5.8rem)] leading-[1] tracking-[-0.02em]"
+            style={{ fontVariationSettings: '"SOFT" 70' }}
+          >
+            <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+              <span className="reserve-line block">Come and</span>
+            </span>
+            <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+              <span className="reserve-line block">
+                <em className={accent}>rest</em> a while.
+              </span>
+            </span>
+          </h2>
 
-                  <Time
-                    value={voice.time}
-                    lineClass="m-line"
-                    className="mt-3 font-serif text-[3.5rem] leading-[0.95] tracking-[-0.03em] tabular-nums"
-                  />
+          <p className="reserve-fade mt-8 max-w-md text-base leading-relaxed opacity-75 md:text-lg">
+            Tell us when and who is coming. There is no payment today. We
+            confirm availability and rates first, then hold your room.
+          </p>
+        </div>
 
-                  <Quote
-                    voice={voice}
-                    className="m-fade mt-6 text-pretty font-serif text-[1.3rem] leading-[1.38] tracking-[-0.005em]"
-                  />
-
-                  <div
-                    className="m-fade mt-7 border-t pt-5"
-                    style={hairline}
-                  >
-                    <p className="font-serif text-[1.2rem] leading-tight">
-                      {voice.name}
-                    </p>
-                    <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <span className="text-[0.65rem] uppercase tracking-[0.28em] opacity-60">
-                        {voice.from}
-                      </span>
-                      <span aria-hidden="true" className="opacity-40">
-                        ·
-                      </span>
-                      <span className={`text-sm italic ${accent}`}>
-                        Stayed in the {voice.stay}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-              </figure>
-            ))}
-          </div>
-
-          <div className="mt-8 flex items-center justify-between px-5">
-            <p className="text-[0.65rem] uppercase tracking-[0.3em] opacity-60">
-              {pad(active + 1)} / {pad(total)}
-            </p>
-            <div className="flex">
-              {voices.map((voice, i) => (
-                <button
-                  key={voice.name}
-                  type="button"
-                  aria-label={`Show voice ${i + 1}`}
-                  aria-current={active === i}
-                  onClick={() => goTo(i)}
-                  className="flex h-8 w-8 items-center justify-center"
-                >
-                  <span
-                    className={`block h-1.5 rounded-full bg-ivory transition-all duration-500 ${
-                      active === i ? "w-6" : "w-1.5 opacity-40"
+        {/* Form panel */}
+        <div className="reserve-panel rounded-[1.75rem] border border-ivory/10 bg-dusk p-5 shadow-[0_50px_120px_-60px_rgba(0,0,0,0.8)] sm:p-6 md:col-span-7 md:col-start-6 md:row-span-2 md:row-start-1 md:p-10">
+          {status !== "sent" ? (
+            <div ref={formBody}>
+              {/* What are you planning. Phone: three equal pills on one row */}
+              <div
+                role="radiogroup"
+                aria-label="What would you like to reserve?"
+                className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap"
+              >
+                {modes.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={mode === m.id}
+                    onClick={() => switchMode(m.id)}
+                    className={`whitespace-nowrap rounded-full border px-2 py-3 text-center text-[0.6rem] uppercase tracking-[0.12em] transition-colors duration-500 max-[359px]:px-1 max-[359px]:text-[0.55rem] sm:px-5 sm:py-2.5 sm:text-[0.68rem] sm:tracking-[0.2em] ${
+                      mode === m.id
+                        ? "border-ivory bg-ivory text-night"
+                        : "border-ivory/25 hover:border-ivory/60"
                     }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+
+              <form
+                noValidate
+                onSubmit={handleSubmit}
+                aria-busy={status === "sending"}
+                className="mt-10 grid gap-x-6 gap-y-8 sm:grid-cols-2"
+              >
+                {/* Stay */}
+                {mode === "stay" && (
+                  <>
+                    <Field
+                      id="room"
+                      label="Room"
+                      className="sm:col-span-2"
+                    >
+                      <select
+                        id="field-room"
+                        value={form.room}
+                        onChange={(e) => update("room", e.target.value)}
+                        className={controlClass}
+                      >
+                        {roomOptions.map((o) => (
+                          <option key={o} value={o} className="bg-night text-ivory">
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field id="checkIn" label="Check in" error={errors.checkIn}>
+                      <input
+                        id="field-checkIn"
+                        type="date"
+                        min={today || undefined}
+                        value={form.checkIn}
+                        onChange={(e) => handleCheckIn(e.target.value)}
+                        aria-invalid={Boolean(errors.checkIn)}
+                        className={controlClass}
+                      />
+                    </Field>
+
+                    <Field id="checkOut" label="Check out" error={errors.checkOut}>
+                      <input
+                        id="field-checkOut"
+                        type="date"
+                        min={form.checkIn || today || undefined}
+                        value={form.checkOut}
+                        onChange={(e) => update("checkOut", e.target.value)}
+                        aria-invalid={Boolean(errors.checkOut)}
+                        className={controlClass}
+                      />
+                    </Field>
+
+                    <Field id="guests" label="Guests" className="sm:col-span-2">
+                      <select
+                        id="field-guests"
+                        value={form.guests}
+                        onChange={(e) => update("guests", e.target.value)}
+                        className={controlClass}
+                      >
+                        {guestOptions.map((o) => (
+                          <option
+                            key={o.value}
+                            value={o.value}
+                            className="bg-night text-ivory"
+                          >
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </>
+                )}
+
+                {/* Table */}
+                {mode === "table" && (
+                  <>
+                    <Field id="venue" label="Where" className="sm:col-span-2">
+                      <select
+                        id="field-venue"
+                        value={form.venue}
+                        onChange={(e) => update("venue", e.target.value)}
+                        className={controlClass}
+                      >
+                        {venueOptions.map((o) => (
+                          <option key={o} value={o} className="bg-night text-ivory">
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field id="date" label="Date" error={errors.date}>
+                      <input
+                        id="field-date"
+                        type="date"
+                        min={today || undefined}
+                        value={form.date}
+                        onChange={(e) => update("date", e.target.value)}
+                        aria-invalid={Boolean(errors.date)}
+                        className={controlClass}
+                      />
+                    </Field>
+
+                    <Field id="time" label="Time" error={errors.time}>
+                      <input
+                        id="field-time"
+                        type="time"
+                        value={form.time}
+                        onChange={(e) => update("time", e.target.value)}
+                        aria-invalid={Boolean(errors.time)}
+                        className={controlClass}
+                      />
+                    </Field>
+
+                    <Field id="guests" label="Guests" className="sm:col-span-2">
+                      <select
+                        id="field-guests"
+                        value={form.guests}
+                        onChange={(e) => update("guests", e.target.value)}
+                        className={controlClass}
+                      >
+                        {guestOptions.map((o) => (
+                          <option
+                            key={o.value}
+                            value={o.value}
+                            className="bg-night text-ivory"
+                          >
+                            {o.label}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                  </>
+                )}
+
+                {/* Event */}
+                {mode === "event" && (
+                  <>
+                    <Field
+                      id="eventType"
+                      label="What are you planning?"
+                      className="sm:col-span-2"
+                    >
+                      <select
+                        id="field-eventType"
+                        value={form.eventType}
+                        onChange={(e) => update("eventType", e.target.value)}
+                        className={controlClass}
+                      >
+                        {eventOptions.map((o) => (
+                          <option key={o} value={o} className="bg-night text-ivory">
+                            {o}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    <Field id="date" label="Date" error={errors.date}>
+                      <input
+                        id="field-date"
+                        type="date"
+                        min={today || undefined}
+                        value={form.date}
+                        onChange={(e) => update("date", e.target.value)}
+                        aria-invalid={Boolean(errors.date)}
+                        className={controlClass}
+                      />
+                    </Field>
+
+                    <Field id="guests" label="Expected guests" error={errors.guests}>
+                      <input
+                        id="field-guests"
+                        type="number"
+                        min={1}
+                        inputMode="numeric"
+                        placeholder="e.g. 150"
+                        value={form.guests === "2" ? "" : form.guests}
+                        onChange={(e) => update("guests", e.target.value)}
+                        aria-invalid={Boolean(errors.guests)}
+                        className={controlClass}
+                      />
+                    </Field>
+                  </>
+                )}
+
+                {/* About you */}
+                <Field id="name" label="Your name" error={errors.name}>
+                  <input
+                    id="field-name"
+                    type="text"
+                    autoComplete="name"
+                    placeholder="Full name"
+                    value={form.name}
+                    onChange={(e) => update("name", e.target.value)}
+                    aria-invalid={Boolean(errors.name)}
+                    className={controlClass}
                   />
-                </button>
-              ))}
+                </Field>
+
+                <Field id="phone" label="Phone or WhatsApp" error={errors.phone}>
+                  <input
+                    id="field-phone"
+                    type="tel"
+                    autoComplete="tel"
+                    placeholder="+234 …"
+                    value={form.phone}
+                    onChange={(e) => update("phone", e.target.value)}
+                    aria-invalid={Boolean(errors.phone)}
+                    className={controlClass}
+                  />
+                </Field>
+
+                <Field
+                  id="email"
+                  label="Email"
+                  optional
+                  error={errors.email}
+                  className="sm:col-span-2"
+                >
+                  <input
+                    id="field-email"
+                    type="email"
+                    autoComplete="email"
+                    placeholder="you@example.com"
+                    value={form.email}
+                    onChange={(e) => update("email", e.target.value)}
+                    aria-invalid={Boolean(errors.email)}
+                    className={controlClass}
+                  />
+                </Field>
+
+                <Field
+                  id="notes"
+                  label="Anything we should know?"
+                  optional
+                  className="sm:col-span-2"
+                >
+                  <textarea
+                    id="field-notes"
+                    rows={3}
+                    placeholder="An anniversary, an early arrival, a food allergy…"
+                    value={form.notes}
+                    onChange={(e) => update("notes", e.target.value)}
+                    className={`${controlClass} resize-none`}
+                  />
+                </Field>
+
+                {/* The Reserve button */}
+                <div className="mode-field sm:col-span-2">
+                  {errors.form && (
+                    <p role="alert" className="mb-4 text-sm text-[#F0A58A]">
+                      {errors.form}
+                    </p>
+                  )}
+
+                  <div className="relative">
+                    <span
+                      aria-hidden="true"
+                      className="reserve-ring pointer-events-none absolute inset-0 rounded-full border border-marigold"
+                    />
+                    <button
+                      type="submit"
+                      disabled={status === "sending"}
+                      className="group relative inline-flex w-full items-center justify-center gap-2 rounded-full bg-marigold px-9 py-5 text-xs font-medium uppercase tracking-[0.18em] text-night transition-shadow duration-500 hover:shadow-[0_12px_50px_-12px_rgba(233,162,59,0.85)] disabled:opacity-70"
+                    >
+                      {status === "sending" ? "Sending…" : submitLabel[mode]}
+                      {status !== "sending" && (
+                        <FiArrowUpRight
+                          aria-hidden="true"
+                          className="transition-transform duration-500 ease-out group-hover:-translate-y-0.5 group-hover:translate-x-0.5"
+                        />
+                      )}
+                    </button>
+                  </div>
+
+                  <p className="mt-5 text-center text-xs leading-relaxed opacity-60">
+                    No payment today. We confirm availability and rates first.
+                    Check in from {site.checkIn}, check out by {site.checkOut}.
+                  </p>
+                </div>
+              </form>
             </div>
-          </div>
+          ) : (
+            sent && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="flex flex-col items-center py-6 text-center md:py-10"
+              >
+                <LogoMark className="h-28 w-20 md:h-36 md:w-28" />
+
+                <h3
+                  ref={sentTitle}
+                  tabIndex={-1}
+                  className="mt-8 font-serif text-4xl leading-tight outline-none md:text-5xl"
+                  style={{ fontVariationSettings: '"SOFT" 70' }}
+                >
+                  <span className="-mb-[0.1em] block overflow-hidden pb-[0.1em]">
+                    <span className="sent-line block">
+                      Thank you, <em className={accent}>{firstName}</em>.
+                    </span>
+                  </span>
+                </h3>
+
+                <p className="sent-fade mt-5 max-w-md text-base leading-relaxed opacity-75">
+                  Your request is in. We will confirm availability and rates by
+                  WhatsApp or phone, usually within the hour.
+                </p>
+
+                <dl
+                  className="sent-fade mt-10 grid w-full max-w-md grid-cols-2 gap-x-6 gap-y-5 border-y py-8 text-left"
+                  style={{
+                    borderColor:
+                      "color-mix(in srgb, currentColor 18%, transparent)",
+                  }}
+                >
+                  {buildSummary(sent).map(([label, value]) => (
+                    <div key={label}>
+                      <dt className="text-[0.6rem] uppercase tracking-[0.25em] opacity-55">
+                        {label}
+                      </dt>
+                      <dd className="mt-1 font-serif text-lg">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                <div className="sent-fade mt-10 flex w-full max-w-md flex-col gap-4">
+                  <a
+                    href={buildWhatsAppUrl(sent, site.whatsapp)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center justify-center gap-3 rounded-full bg-ivory px-9 py-4 text-xs font-medium uppercase tracking-[0.18em] text-night transition-opacity duration-500 hover:opacity-85"
+                  >
+                    <FaWhatsapp aria-hidden="true" className="text-base" />
+                    Send it on WhatsApp
+                  </a>
+
+                  <button
+                    type="button"
+                    onClick={() => setStatus("idle")}
+                    className="text-[0.7rem] uppercase tracking-[0.22em] opacity-70 transition-opacity duration-500 hover:opacity-100"
+                  >
+                    Edit my request
+                  </button>
+                </div>
+              </div>
+            )
+          )}
         </div>
-      )}
 
-      {/* REDUCED MOTION (and before load): all voices, one after another */}
-      {mode === "list" && (
-        <div className="px-5 py-24 md:px-10 md:py-40">
-          <div className="mx-auto max-w-[90rem]">
-            <Label />
-            <h3
-              className="mt-6 font-serif text-[clamp(2.6rem,6vw,5rem)] leading-[1.02] tracking-[-0.02em]"
-              style={softStyle}
-            >
-              Overheard at <em className={accent}>Solace</em>.
-            </h3>
+        {/* Contact */}
+        <div className="md:col-span-5 md:row-start-2">
+          <ul
+            className="reserve-fade border-t"
+            style={{
+              borderColor: "color-mix(in srgb, currentColor 18%, transparent)",
+            }}
+          >
+            {contacts.map(({ icon: Icon, label, value, href }) => {
+              const content = (
+                <>
+                  <Icon aria-hidden="true" className="text-lg opacity-70" />
+                  <span className="text-[0.62rem] uppercase tracking-[0.25em] opacity-55">
+                    {label}
+                  </span>
+                  <span className="ml-auto text-right font-serif text-lg md:text-xl">
+                    {value}
+                  </span>
+                </>
+              );
 
-            <ul className="mt-14 space-y-20 md:mt-24 md:space-y-28">
-              {voices.map((voice, i) => (
-                <li key={voice.name}>
-                  <figure className="grid gap-8 md:grid-cols-12 md:items-center md:gap-12">
-                    <div className="relative aspect-[3/4] w-[min(70vw,18rem)] overflow-hidden rounded-t-full bg-dusk md:col-span-4">
-                      <Image
-                        src={voice.image}
-                        alt={voice.imageAlt}
-                        fill
-                        sizes="(min-width: 768px) 24vw, 70vw"
-                        className="object-cover"
-                      />
-                    </div>
-
-                    <div className="md:col-span-8">
-                      <p className="flex items-center gap-4 text-[0.65rem] uppercase tracking-[0.3em]">
-                        <span className="opacity-60">
-                          {pad(i + 1)} / {pad(total)}
-                        </span>
-                        <span className="h-px w-8 bg-current opacity-40" />
-                        {voice.place}
-                      </p>
-
-                      <Time
-                        value={voice.time}
-                        lineClass="list-line"
-                        className="mt-3 font-serif text-[clamp(4rem,9vw,8rem)] leading-[0.95] tracking-[-0.03em] tabular-nums"
-                      />
-
-                      <Quote
-                        voice={voice}
-                        className="mt-5 max-w-[40rem] font-serif text-[clamp(1.4rem,2.4vw,2.1rem)] leading-[1.25]"
-                      />
-
-                      <Who
-                        voice={voice}
-                        className="mt-6 flex flex-wrap items-baseline gap-x-5 gap-y-1"
-                      />
-                    </div>
-                  </figure>
+              return (
+                <li
+                  key={label}
+                  className="border-b"
+                  style={{
+                    borderColor:
+                      "color-mix(in srgb, currentColor 18%, transparent)",
+                  }}
+                >
+                  {href ? (
+                    <a
+                      href={href}
+                      {...(href.startsWith("http")
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {})}
+                      className="flex items-center gap-4 py-5 transition-opacity duration-500 hover:opacity-70"
+                    >
+                      {content}
+                    </a>
+                  ) : (
+                    <div className="flex items-center gap-4 py-5">{content}</div>
+                  )}
                 </li>
-              ))}
-            </ul>
-          </div>
+              );
+            })}
+          </ul>
         </div>
-      )}
-    </div>
+      </div>
+    </section>
   );
 }

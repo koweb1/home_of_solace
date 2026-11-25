@@ -67,6 +67,10 @@ const accent = "text-[#D99A78]";
 const total = voices.length;
 const pad = (n: number) => String(n).padStart(2, "0");
 
+const hairline = {
+  borderColor: "color-mix(in srgb, currentColor 18%, transparent)",
+};
+
 // The picked-out phrase gets an underline that can be drawn in
 const markStyle: React.CSSProperties = {
   backgroundImage: "linear-gradient(currentColor, currentColor)",
@@ -473,7 +477,13 @@ export default function Voices() {
                   />
                 </div>
 
-                <div className="mt-6">
+                {/* The text fades back on the card you are not on, so a
+                    half-visible neighbour never competes with the quote */}
+                <div
+                  className={`mt-7 transition-opacity duration-500 ${
+                    active === i ? "opacity-100" : "opacity-40"
+                  }`}
+                >
                   <p className="m-fade flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.28em]">
                     <span className="opacity-60">
                       {pad(i + 1)} / {pad(total)}
@@ -485,18 +495,33 @@ export default function Voices() {
                   <Time
                     value={voice.time}
                     lineClass="m-line"
-                    className="mt-2 font-serif text-[4.2rem] leading-[0.95] tracking-[-0.03em] tabular-nums"
+                    className="mt-3 font-serif text-[3.5rem] leading-[0.95] tracking-[-0.03em] tabular-nums"
                   />
 
                   <Quote
                     voice={voice}
-                    className="m-fade mt-4 font-serif text-[1.4rem] leading-[1.25]"
+                    className="m-fade mt-6 text-pretty font-serif text-[1.3rem] leading-[1.38] tracking-[-0.005em]"
                   />
 
-                  <Who
-                    voice={voice}
-                    className="m-fade mt-5 flex flex-col gap-1"
-                  />
+                  <div
+                    className="m-fade mt-7 border-t pt-5"
+                    style={hairline}
+                  >
+                    <p className="font-serif text-[1.2rem] leading-tight">
+                      {voice.name}
+                    </p>
+                    <p className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                      <span className="text-[0.65rem] uppercase tracking-[0.28em] opacity-60">
+                        {voice.from}
+                      </span>
+                      <span aria-hidden="true" className="opacity-40">
+                        ·
+                      </span>
+                      <span className={`text-sm italic ${accent}`}>
+                        Stayed in the {voice.stay}
+                      </span>
+                    </p>
+                  </div>
                 </div>
               </figure>
             ))}

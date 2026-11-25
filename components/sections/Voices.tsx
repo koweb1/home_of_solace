@@ -152,9 +152,11 @@ export default function Voices() {
   const root = useRef<HTMLDivElement>(null);
   const swipe = useRef<HTMLDivElement>(null);
   const raf = useRef(0);
+  const shown = useRef<Set<number>>(new Set());
 
-  // "list" is the safe default (also used for reduced motion and before load)
-  const [mode, setMode] = useState<Mode>("list");
+  // null until the browser has told us which layout to use, so the section
+  // is drawn once, in its final form, and never swapped afterwards
+  const [mode, setMode] = useState<Mode | null>(null);
   const [active, setActive] = useState(0);
 
   // Pick the layout: laptop, phone, or reduced motion
@@ -162,8 +164,10 @@ export default function Voices() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     const wide = window.matchMedia("(min-width: 768px)");
 
-    const update = () =>
+    const update = () => {
       setMode(reduce.matches ? "list" : wide.matches ? "stage" : "swipe");
+      setActive(0);
+    };
 
     update();
     reduce.addEventListener("change", update);
@@ -185,6 +189,27 @@ export default function Voices() {
   useEffect(() => {
     return () => cancelAnimationFrame(raf.current);
   }, []);
+
+  // Phone: show one card's text, once, and never hide it again
+  const reveal = (index: number) => {
+    if (shown.current.has(index)) return;
+    shown.current.add(index);
+
+    const card = root.current?.querySelectorAll<HTMLElement>(".m-card")[index];
+    if (!card) return;
+
+    const q = gsap.utils.selector(card);
+
+    gsap.to(q(".m-line"), { yPercent: 0, duration: 1.2, ease: "expo.out" });
+    gsap.to(q(".m-fade"), {
+      opacity: 1,
+      y: 0,
+      duration: 1.1,
+      stagger: 0.08,
+      delay: 0.1,
+      ease: "expo.out",
+    });
+  };
 
   // 1. Laptop: the scroll steps through the voices
   useGSAP(
@@ -305,43 +330,40 @@ export default function Voices() {
     { scope: root, dependencies: [mode], revertOnUpdate: true }
   );
 
-  // 2. Phone: the voice you land on rises into place
+  // 2. Phone, setup: every card's text starts hidden. The first card's text
+  //    appears when the section reaches the screen.
   useGSAP(
     () => {
       if (mode !== "swipe") return;
 
-      const card = root.current?.querySelectorAll<HTMLElement>(".m-card")[active];
-      if (!card) return;
+      shown.current = new Set();
 
-      const q = gsap.utils.selector(card);
-      const trigger = { trigger: card, start: "top 85%", once: true };
+      const cards = root.current?.querySelectorAll<HTMLElement>(".m-card");
+      if (!cards || cards.length === 0) return;
 
-      gsap.fromTo(
-        q(".m-line"),
-        { yPercent: 115 },
-        {
-          yPercent: 0,
-          duration: 1.2,
-          ease: "expo.out",
-          scrollTrigger: trigger,
-        }
-      );
+      cards.forEach((card) => {
+        const q = gsap.utils.selector(card);
+        gsap.set(q(".m-line"), { yPercent: 115 });
+        gsap.set(q(".m-fade"), { opacity: 0, y: 24 });
+      });
 
-      gsap.fromTo(
-        q(".m-fade"),
-        { opacity: 0, y: 24 },
-        {
-          opacity: 1,
-          y: 0,
-          duration: 1.1,
-          stagger: 0.08,
-          delay: 0.1,
-          ease: "expo.out",
-          scrollTrigger: trigger,
-        }
-      );
+      ScrollTrigger.create({
+        trigger: cards[0],
+        start: "top 85%",
+        once: true,
+        onEnter: () => reveal(0),
+      });
     },
-    { scope: root, dependencies: [mode, active], revertOnUpdate: true }
+    { scope: root, dependencies: [mode], revertOnUpdate: true }
+  );
+
+  // 3. Phone: the first time you swipe to a card, its text appears. Never again.
+  useGSAP(
+    () => {
+      if (mode !== "swipe" || active === 0) return;
+      reveal(active);
+    },
+    { scope: root, dependencies: [mode, active] }
   );
 
   const stepWidth = () => {
@@ -367,6 +389,11 @@ export default function Voices() {
 
   return (
     <div ref={root} className="relative">
+      {/* Before the layout is known: a quiet placeholder that holds the space */}
+      {mode === null && (
+        <div aria-hidden="true" className="min-h-[56rem] md:min-h-screen" />
+      )}
+
       {/* LAPTOP: a panel that sticks while the scroll steps through the voices */}
       {mode === "stage" && (
         <div className="v-wrap relative h-[300svh]">
@@ -477,13 +504,9 @@ export default function Voices() {
                   />
                 </div>
 
-                {/* The text fades back on the card you are not on, so a
-                    half-visible neighbour never competes with the quote */}
-                <div
-                  className={`mt-7 transition-opacity duration-500 ${
-                    active === i ? "opacity-100" : "opacity-40"
-                  }`}
-                >
+                {/* The text of a card stays hidden until you reach it, then
+                    appears once. The next card's photo still peeks in. */}
+                <div className="mt-7">
                   <p className="m-fade flex items-center gap-3 text-[0.62rem] uppercase tracking-[0.28em]">
                     <span className="opacity-60">
                       {pad(i + 1)} / {pad(total)}
@@ -553,7 +576,7 @@ export default function Voices() {
         </div>
       )}
 
-      {/* REDUCED MOTION (and before load): all voices, one after another */}
+      {/* REDUCED MOTION: all voices, one after another */}
       {mode === "list" && (
         <div className="px-5 py-24 md:px-10 md:py-40">
           <div className="mx-auto max-w-[90rem]">
